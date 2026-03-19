@@ -186,6 +186,15 @@ html,body{background:var(--bg);color:var(--text);font-family:var(--mono);min-hei
 .proto-tvl{font-size:10px;color:var(--text3);font-family:var(--sans);}
 .error-note{font-size:11px;color:var(--amber);font-family:var(--sans);padding:8px 12px;background:var(--amber-dim);border:1px solid var(--amber-border);border-radius:6px;margin-bottom:10px;}
 .live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;display:inline-block;}
+.nft-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.nft-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color 0.15s;}
+.nft-card:hover{border-color:var(--border2);}
+.nft-img-wrap{width:100%;aspect-ratio:1;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.nft-no-img{color:var(--text3);font-size:28px;}
+.nft-img{width:100%;height:100%;object-fit:cover;}
+.nft-name{font-size:10px;color:var(--text);font-family:var(--sans);padding:6px 8px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nft-coll{font-size:9px;color:var(--text3);font-family:var(--sans);padding:0 8px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ens-badge{font-size:9px;padding:2px 7px;border-radius:99px;background:var(--blue-dim);color:var(--blue);border:1px solid rgba(77,159,255,0.3);font-family:var(--mono);margin-left:6px;}
 </style>
 </head>
 <body>
@@ -215,6 +224,7 @@ html,body{background:var(--bg);color:var(--text);font-family:var(--mono);min-hei
     <div class="nav-section">Intelligence</div>
     <div class="nav-item" id="nav-ai" onclick="showPage('ai',this)"><span>◉</span> AI Advisor</div>
     <div class="nav-item" id="nav-portfolio" onclick="showPage('portfolio',this)"><span>◧</span> Portfolio</div>
+    <div class="nav-item" id="nav-nfts" onclick="showPage('nfts',this)"><span>◈</span> NFTs</div>
     <div class="nav-section">Config</div>
     <div class="nav-item" id="nav-settings" onclick="showPage('settings',this)"><span>◌</span> API Keys</div>
   </nav>
@@ -247,7 +257,7 @@ const S = {
   inspectTab:'overview', stakeTab:'stake', stakeProtoIdx:0,
   selectedVault:null, aiMessages:[], aiLoading:false,
   vaults:[], vaultsLoaded:false, vaultsLoading:false,
-  prices:{eth:0,sol:0,btc:0}, gasData:null, portfolioData:null,
+  prices:{eth:0,sol:0,btc:0}, gasData:null, portfolioData:null, nftData:null, ensName:'',
   keys:{
     alchemy: localStorage.getItem('cc_alchemy')||'',
     helius:  localStorage.getItem('cc_helius')||'',
@@ -297,6 +307,34 @@ async function etherscanGet(params){
   const base=S.chain==='arb'?'https://api.arbiscan.io/api':'https://api.etherscan.io/api';
   const qs=Object.entries({...params,apikey:key}).map(([k,v])=>`${k}=${v}`).join('&');
   try{const r=await fetch(`${base}?${qs}`);return await r.json();}catch(e){return null;}
+}
+
+// ═══════════════════════ ENS ══════════════════════════════
+async function resolveENS(name){
+  try{
+    const r=await fetch(`https://api.ensdata.net/${name}`);
+    if(!r.ok) return null;
+    const d=await r.json();
+    return d.address||null;
+  }catch(e){return null;}
+}
+
+// ═══════════════════════ ERC-20 TOKENS ════════════════════
+async function fetchEvmTokens(wallet){
+  if(!S.keys.alchemy) return[];
+  const res=await evmRpc('alchemy_getTokenBalances',[wallet,'erc20']);
+  if(!res?.tokenBalances) return[];
+  const nonzero=res.tokenBalances
+    .filter(t=>t.tokenBalance&&BigInt(t.tokenBalance)>0n)
+    .slice(0,8);
+  if(!nonzero.length) return[];
+  const metas=await Promise.all(nonzero.map(t=>evmRpc('alchemy_getTokenMetadata',[t.contractAddress])));
+  return nonzero.map((t,i)=>{
+    const m=metas[i]||{};
+    const dec=m.decimals||18;
+    const bal=Number(BigInt(t.tokenBalance))/Math.pow(10,dec);
+    return{symbol:m.symbol||t.contractAddress.slice(0,8),name:m.name||'Unknown',balance:bal>0.0001?bal.toFixed(4):'<0.0001'};
+  });
 }
 
 // ═══════════════════════ LIVE DATA ════════════════════════
@@ -375,11 +413,51 @@ async function fetchPortfolio(){
       }).filter(t=>parseFloat(t.amount)>0.001);
       S.portfolioData={type:'sol',solBal,tokens};
     } else {
-      const ethHex=await evmRpc('eth_getBalance',[S.wallet,'latest']);
+      const [ethHex,evmTokens]=await Promise.all([
+        evmRpc('eth_getBalance',[S.wallet,'latest']),
+        fetchEvmTokens(S.wallet)
+      ]);
       const ethBal=ethHex?(parseInt(ethHex,16)/1e18).toFixed(6):'—';
-      S.portfolioData={type:'evm',ethBal};
+      S.portfolioData={type:'evm',ethBal,tokens:evmTokens};
     }
   }catch(e){S.portfolioData=null;}
+  renderPage();
+}
+
+// ═══════════════════════ NFTS ═════════════════════════════
+async function fetchNFTs(){
+  S.nftData=null;renderPage();
+  try{
+    if(S.chain==='sol'){
+      if(!S.keys.helius){S.nftData={nfts:[],error:'Helius API key required for Solana NFTs — add it in API Keys'};renderPage();return;}
+      const r=await fetch(`https://mainnet.helius-rpc.com/?api-key=${S.keys.helius}`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getAssetsByOwner',
+          params:{ownerAddress:S.wallet,page:1,limit:24,displayOptions:{showFungible:false}}})
+      });
+      const d=await r.json();
+      const nfts=(d.result?.items||[]).map(n=>({
+        name:n.content?.metadata?.name||n.id.slice(0,8)+'…',
+        image:n.content?.files?.[0]?.uri||n.content?.links?.image||null,
+        collection:n.grouping?.[0]?.group_value?.slice(0,20)||'—',id:n.id
+      }));
+      S.nftData={type:'sol',nfts};
+    } else {
+      if(!S.keys.alchemy){S.nftData={nfts:[],error:'Alchemy API key required for NFTs — add it in API Keys'};renderPage();return;}
+      const base=S.chain==='arb'
+        ?`https://arb-mainnet.g.alchemy.com/nft/v3/${S.keys.alchemy}`
+        :`https://eth-mainnet.g.alchemy.com/nft/v3/${S.keys.alchemy}`;
+      const r=await fetch(`${base}/getNFTsForOwner?owner=${S.wallet}&pageSize=24`);
+      const d=await r.json();
+      const nfts=(d.ownedNfts||[]).map(n=>({
+        name:n.name||n.contract?.name||'NFT #'+n.tokenId,
+        image:n.image?.thumbnailUrl||n.image?.cachedUrl||null,
+        collection:n.contract?.name||'—',
+        tokenId:n.tokenId,contract:n.contract?.address
+      }));
+      S.nftData={type:'evm',nfts};
+    }
+  }catch(e){S.nftData={nfts:[],error:'Error loading NFTs: '+e.message};}
   renderPage();
 }
 
@@ -534,13 +612,34 @@ function showPage(p,el){
   S.page=p;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   (el||document.getElementById('nav-'+p))?.classList.add('active');
-  const T={inspector:'TX INSPECTOR',approvals:'TOKEN APPROVALS',stake:'STAKE / UNSTAKE',vaults:'YIELD VAULTS',swap:'TOKEN SWAP',lend:'LEND / BORROW',ai:'AI ADVISOR',portfolio:'PORTFOLIO',settings:'API KEYS'};
+  const T={inspector:'TX INSPECTOR',approvals:'TOKEN APPROVALS',stake:'STAKE / UNSTAKE',vaults:'YIELD VAULTS',swap:'TOKEN SWAP',lend:'LEND / BORROW',ai:'AI ADVISOR',portfolio:'PORTFOLIO',nfts:'NFT GALLERY',settings:'API KEYS'};
   document.getElementById('page-title').textContent=T[p]||p.toUpperCase();
   renderPage();
   if(p==='vaults'&&!S.vaultsLoaded) fetchLlamaYields();
   if(p==='portfolio') fetchPortfolio();
+  if(p==='nfts') fetchNFTs();
 }
-function loadWallet(){S.wallet=document.getElementById('wallet-addr').value.trim();S.portfolioData=null;renderPage();}
+async function loadWallet(){
+  const raw=document.getElementById('wallet-addr').value.trim();
+  if(!raw) return;
+  if(raw.toLowerCase().endsWith('.eth')){
+    S.ensName=raw;
+    const inp=document.getElementById('wallet-addr');
+    inp.placeholder='Resolving '+raw+'…';inp.value='';
+    const resolved=await resolveENS(raw);
+    if(resolved){
+      S.wallet=resolved;
+      inp.value=resolved;
+      inp.placeholder='0x… or Sol address';
+    } else {
+      inp.value=raw;inp.placeholder='0x… or Sol address';
+      return;
+    }
+  } else {
+    S.wallet=raw;S.ensName='';
+  }
+  S.portfolioData=null;S.nftData=null;renderPage();
+}
 
 // ═══════════════════════ RENDER ═══════════════════════════
 function renderPage(){
@@ -554,6 +653,7 @@ function renderPage(){
     case 'lend':     c.innerHTML=renderLend();break;
     case 'ai':       c.innerHTML=renderAIShell();restoreAIMessages();break;
     case 'portfolio':c.innerHTML=renderPortfolio();break;
+    case 'nfts':     c.innerHTML=renderNFTs();break;
     case 'settings': c.innerHTML=renderSettings();break;
   }
 }
@@ -860,14 +960,14 @@ function renderPortfolio(){
   const pd=S.portfolioData;
   return`
 <div class="portfolio-grid">
-  <div class="port-stat"><div class="port-label">Wallet</div><div class="port-val" style="font-size:10px;">${S.wallet.slice(0,16)}…</div></div>
+  <div class="port-stat"><div class="port-label">Wallet</div><div class="port-val" style="font-size:10px;">${S.ensName||S.wallet.slice(0,16)+'…'}</div></div>
   <div class="port-stat"><div class="port-label">Network</div><div class="port-val" style="font-size:12px;">${CHAINS[S.chain].name}</div></div>
   <div class="port-stat"><div class="port-label">RPC</div><div class="port-val" style="font-size:11px;">${S.chain==='sol'?(S.keys.helius?'Helius':'Public'):(S.keys.alchemy?'Alchemy':'Public')}</div></div>
 </div>
 <div class="card">
   <div class="card-title">Native balance ${pd?'<span class="badge live">live</span>':'<span class="badge demo">loading…</span>'}</div>
   ${!pd?`<div class="loading"><div class="spinner"></div>Fetching balance…</div>`:''}
-  ${pd?.type==='evm'?`<div class="data-row"><span class="dr-key">ETH</span><span class="dr-val green">${pd.ethBal} ETH${S.prices.eth?` <span style="color:var(--text3);font-size:10px;">$${(parseFloat(pd.ethBal)*(S.prices.eth)).toFixed(2)}</span>`:''}</span></div>`:''}
+  ${pd?.type==='evm'?`<div class="data-row"><span class="dr-key">ETH</span><span class="dr-val green">${pd.ethBal} ETH${S.prices.eth?` <span style="color:var(--text3);font-size:10px;">$${(parseFloat(pd.ethBal)*(S.prices.eth)).toFixed(2)}</span>`:''}</span></div>${(pd.tokens||[]).map(t=>`<div class="data-row"><span class="dr-key">${t.symbol}</span><span class="dr-val">${t.balance} <span style="color:var(--text3);font-size:10px;">${t.name}</span></span></div>`).join('')}${!S.keys.alchemy?`<div style="font-size:10px;color:var(--text3);font-family:var(--sans);padding:8px 0;">Add Alchemy key to see ERC-20 tokens</div>`:''}`:''  }
   ${pd?.type==='sol'?`<div class="data-row"><span class="dr-key">SOL</span><span class="dr-val green">${pd.solBal.toFixed(6)} SOL${S.prices.sol?` <span style="color:var(--text3);font-size:10px;">$${(pd.solBal*S.prices.sol).toFixed(2)}</span>`:''}</span></div>${(pd.tokens||[]).map(t=>`<div class="data-row"><span class="dr-key">${t.mint}</span><span class="dr-val">${t.amount}</span></div>`).join('')}`:''}
 </div>
 <div class="card">
@@ -929,6 +1029,33 @@ function appendAIMsg(role,content,isUser,id){
   const d=document.createElement('div');d.className='ai-msg';if(id)d.id=id;
   d.innerHTML=`<div class="ai-msg-role">${role}</div><div class="ai-msg-body ${isUser?'user':''}">${content}</div>`;
   c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+
+// ── NFTS ──────────────────────────────────────────────────
+function renderNFTs(){
+  const nd=S.nftData;
+  const ensLabel=S.ensName?`<span class="ens-badge">${S.ensName}</span>`:'';
+  if(!nd) return`<div class="loading"><div class="spinner"></div>Loading NFTs for ${S.wallet.slice(0,14)}…${ensLabel}</div>`;
+  if(nd.error) return`<div class="error-note">${nd.error}</div>`;
+  if(!nd.nfts.length) return`
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+  <span class="badge live">${CHAINS[S.chain].name}${ensLabel}</span>
+  <button class="btn btn-sm" onclick="S.nftData=null;fetchNFTs()">Refresh ↻</button>
+</div>
+<div style="padding:32px;text-align:center;color:var(--text3);font-family:var(--sans);font-size:12px;border:1px dashed var(--border);border-radius:10px;">No NFTs found for this wallet on ${CHAINS[S.chain].name}.</div>`;
+  return`
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+  <span class="badge live">${nd.nfts.length} NFTs · ${CHAINS[S.chain].name}${ensLabel}</span>
+  <button class="btn btn-sm" onclick="S.nftData=null;fetchNFTs()">Refresh ↻</button>
+</div>
+<div class="nft-grid">
+${nd.nfts.map(n=>`
+  <div class="nft-card" onclick="quickAsk('Tell me about this NFT: ${n.name.replace(/'/g,"'")} from collection ${n.collection.replace(/'/g,"'")}. What is it worth, what is its rarity, and should I hold or sell?')">
+    <div class="nft-img-wrap">${n.image?`<img class="nft-img" src="${n.image}" loading="lazy" onerror="this.parentElement.innerHTML='<span class=nft-no-img>◈</span>'" />`:`<span class="nft-no-img">◈</span>`}</div>
+    <div class="nft-name">${n.name}</div>
+    <div class="nft-coll">${n.collection}</div>
+  </div>`).join('')}
+</div>`;
 }
 
 // ── SETTINGS ──────────────────────────────────────────────
