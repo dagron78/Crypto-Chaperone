@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Crypto Chaperone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg:#0a0c0f;--surface:#111418;--surface2:#181c22;--surface3:#1e2430;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#e8eaed;--text2:#8a9099;--text3:#545a63;
+  --green:#00e5a0;--green-dim:rgba(0,229,160,0.12);--green-border:rgba(0,229,160,0.25);
+  --amber:#f5a623;--amber-dim:rgba(245,166,35,0.1);--amber-border:rgba(245,166,35,0.25);
+  --red:#ff4d6a;--red-dim:rgba(255,77,106,0.1);--red-border:rgba(255,77,106,0.25);
+  --blue:#4d9fff;--blue-dim:rgba(77,159,255,0.1);
+  --sol:#9945ff;--sol-dim:rgba(153,69,255,0.12);
+  --eth:#627eea;--eth-dim:rgba(98,126,234,0.12);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;}
+.shell{display:grid;grid-template-columns:230px 1fr;min-height:100vh;}
+.sidebar{border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--surface);}
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.logo{padding:20px 18px 16px;border-bottom:1px solid var(--border);}
+.logo-mark{font-size:11px;font-weight:500;letter-spacing:0.2em;color:var(--green);text-transform:uppercase;}
+.logo-sub{font-size:10px;color:var(--text3);font-family:var(--sans);margin-top:2px;}
+.chain-switcher{padding:12px;border-bottom:1px solid var(--border);}
+.chain-label{font-size:9px;letter-spacing:0.15em;color:var(--text3);text-transform:uppercase;margin-bottom:6px;font-family:var(--sans);}
+.chain-btns{display:flex;gap:4px;}
+.chain-btn{flex:1;padding:6px 4px;font-size:10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--mono);text-align:center;transition:all 0.15s;}
+.chain-btn.active.eth{border-color:var(--eth);color:var(--eth);background:var(--eth-dim);}
+.chain-btn.active.sol{border-color:var(--sol);color:var(--sol);background:var(--sol-dim);}
+.chain-btn.active.arb{border-color:#12aaff;color:#12aaff;background:rgba(18,170,255,0.1);}
+.chain-btn:hover:not(.active){background:var(--surface2);}
+.nav{flex:1;padding:8px 0;overflow-y:auto;}
+.nav-section{padding:10px 12px 4px;font-size:9px;letter-spacing:0.15em;color:var(--text3);text-transform:uppercase;font-family:var(--sans);}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:11px;color:var(--text2);transition:all 0.1s;border-left:2px solid transparent;font-family:var(--sans);}
+.nav-item:hover{color:var(--text);background:var(--surface2);}
+.nav-item.active{color:var(--green);border-left-color:var(--green);background:var(--green-dim);}
+.wallet-area{padding:12px;border-top:1px solid var(--border);}
+.wallet-label{font-size:9px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;font-family:var(--sans);margin-bottom:6px;}
+.wallet-input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--text);font-family:var(--mono);outline:none;}
+.wallet-input:focus{border-color:var(--green-border);}
+.wallet-input::placeholder{color:var(--text3);}
+.wallet-go{width:100%;margin-top:5px;padding:6px;font-size:10px;background:var(--green-dim);border:1px solid var(--green-border);border-radius:6px;color:var(--green);cursor:pointer;font-family:var(--mono);transition:all 0.15s;}
+.wallet-go:hover{background:rgba(0,229,160,0.2);}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+.page-title{font-size:11px;letter-spacing:0.1em;color:var(--text2);font-family:var(--sans);}
+.status-bar{display:flex;align-items:center;gap:12px;font-size:10px;color:var(--text3);font-family:var(--sans);}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.live-price{font-family:var(--mono);font-size:10px;color:var(--text2);}
+.content{flex:1;overflow-y:auto;padding:20px;}
+.content::-webkit-scrollbar{width:4px;}
+.content::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:2px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+.card-title{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;font-family:var(--sans);display:flex;justify-content:space-between;align-items:center;}
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.tab{font-size:10px;padding:7px 14px;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:var(--sans);letter-spacing:0.05em;transition:all 0.1s;}
+.tab:hover{color:var(--text2);}
+.tab.active{color:var(--green);border-bottom-color:var(--green);}
+.tx-input-row{display:flex;gap:8px;margin-bottom:12px;}
+.tx-field{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:11px;color:var(--text);font-family:var(--mono);outline:none;}
+.tx-field:focus{border-color:rgba(0,229,160,0.4);}
+.tx-field::placeholder{color:var(--text3);}
+.btn{padding:9px 16px;font-size:10px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--mono);letter-spacing:0.05em;transition:all 0.15s;white-space:nowrap;}
+.btn:hover{background:var(--surface2);color:var(--text);}
+.btn-primary{border-color:var(--green-border);background:var(--green-dim);color:var(--green);}
+.btn-primary:hover{background:rgba(0,229,160,0.2);}
+.btn-danger{border-color:var(--red-border);background:var(--red-dim);color:var(--red);}
+.btn-sm{padding:5px 10px;font-size:9px;}
+.data-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.data-row:last-child{border-bottom:none;}
+.dr-key{color:var(--text3);font-family:var(--sans);font-size:11px;}
+.dr-val{color:var(--text);font-family:var(--mono);font-size:11px;text-align:right;}
+.dr-val.green{color:var(--green);}
+.dr-val.amber{color:var(--amber);}
+.dr-val.red{color:var(--red);}
+.dr-val.addr{color:var(--blue);font-size:10px;}
+.risk-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
+.risk-item:last-child{border-bottom:none;}
+.risk-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.risk-dot.ok{background:var(--green);}
+.risk-dot.warn{background:var(--amber);}
+.risk-dot.danger{background:var(--red);}
+.risk-text{font-size:11px;color:var(--text);font-family:var(--sans);line-height:1.5;}
+.risk-sub{font-size:10px;color:var(--text3);font-family:var(--sans);margin-top:2px;}
+.diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.diff-cell{background:var(--surface2);border-radius:8px;padding:10px 12px;}
+.diff-label{font-size:10px;color:var(--text3);font-family:var(--sans);margin-bottom:4px;}
+.diff-val{font-size:13px;font-weight:500;font-family:var(--mono);}
+.diff-val.neg{color:var(--red);}
+.diff-val.pos{color:var(--green);}
+.diff-val.neutral{color:var(--text2);}
+.trace{background:var(--surface2);border-radius:8px;padding:12px;font-size:10px;font-family:var(--mono);line-height:1.9;color:var(--text3);}
+.t-ok{color:var(--green);}
+.t-info{color:var(--blue);padding-left:14px;display:block;}
+.explain-block{border-left:2px solid var(--surface3);padding:10px 14px;margin-bottom:10px;font-size:12px;font-family:var(--sans);line-height:1.7;color:var(--text2);border-radius:0 6px 6px 0;background:var(--surface2);}
+.explain-block.warn{border-left-color:var(--amber);}
+.explain-block.danger{border-left-color:var(--red);}
+.explain-block.info{border-left-color:var(--blue);}
+.explain-block.ok{border-left-color:var(--green);}
+.explain-block strong{color:var(--text);font-weight:500;}
+.explain-block code{font-family:var(--mono);font-size:11px;color:var(--green);}
+.gas-grid{display:flex;gap:6px;}
+.gas-opt{flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;text-align:center;transition:all 0.15s;}
+.gas-opt.selected{border-color:var(--green-border);background:var(--green-dim);}
+.gas-opt:hover:not(.selected){border-color:var(--border2);background:var(--surface2);}
+.gas-speed{font-size:9px;color:var(--text3);font-family:var(--sans);text-transform:uppercase;letter-spacing:0.1em;}
+.gas-gwei{font-size:12px;color:var(--text);font-family:var(--mono);margin:2px 0;}
+.gas-usd{font-size:9px;color:var(--text3);font-family:var(--sans);}
+.action-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:all 0.15s;}
+.action-card:hover{border-color:var(--border2);background:var(--surface2);}
+.action-card.selected{border-color:var(--green-border);background:var(--green-dim);}
+.ac-name{font-size:11px;color:var(--text);font-family:var(--sans);font-weight:500;margin-bottom:3px;}
+.ac-desc{font-size:10px;color:var(--text3);font-family:var(--sans);line-height:1.4;}
+.ac-chain{font-size:9px;margin-top:6px;padding:2px 6px;border-radius:99px;display:inline-block;font-family:var(--mono);}
+.ac-chain.eth{background:var(--eth-dim);color:var(--eth);border:1px solid rgba(98,126,234,0.25);}
+.ac-chain.sol{background:var(--sol-dim);color:var(--sol);border:1px solid rgba(153,69,255,0.25);}
+.ac-chain.arb{background:rgba(18,170,255,0.1);color:#12aaff;border:1px solid rgba(18,170,255,0.25);}
+.form-group{margin-bottom:12px;}
+.form-label{font-size:10px;color:var(--text3);font-family:var(--sans);letter-spacing:0.05em;margin-bottom:5px;display:flex;justify-content:space-between;}
+.form-label span{color:var(--text2);}
+.token-row{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;}
+.token-badge{font-size:10px;padding:2px 8px;border-radius:99px;font-family:var(--mono);white-space:nowrap;}
+.token-badge.sol{background:var(--sol-dim);color:var(--sol);border:1px solid rgba(153,69,255,0.3);}
+.token-badge.eth{background:var(--eth-dim);color:var(--eth);border:1px solid rgba(98,126,234,0.3);}
+.token-badge.usdc{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(77,159,255,0.3);}
+.token-badge.green{background:var(--green-dim);color:var(--green);border:1px solid var(--green-border);}
+.apy-display{display:flex;align-items:baseline;gap:6px;padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:12px;}
+.apy-num{font-size:24px;font-weight:500;font-family:var(--mono);color:var(--green);}
+.apy-label{font-size:11px;color:var(--text3);font-family:var(--sans);}
+.apy-period{font-size:10px;color:var(--text3);font-family:var(--sans);margin-left:auto;}
+.approval-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);}
+.approval-row:last-child{border-bottom:none;}
+.approval-protocol{font-family:var(--sans);color:var(--text);flex:1;font-size:11px;}
+.approval-token{color:var(--text2);font-family:var(--mono);font-size:10px;}
+.approval-amount{font-family:var(--mono);font-size:10px;color:var(--amber);}
+.approval-amount.unlimited{color:var(--red);}
+.revoke-btn{font-size:9px;padding:2px 7px;border-radius:4px;border:1px solid var(--red-border);background:var(--red-dim);color:var(--red);cursor:pointer;font-family:var(--mono);}
+.portfolio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.port-stat{background:var(--surface2);border-radius:8px;padding:10px 12px;}
+.port-label{font-size:9px;color:var(--text3);font-family:var(--sans);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;}
+.port-val{font-size:16px;font-weight:500;font-family:var(--mono);}
+.port-val.green{color:var(--green);}
+.port-val.amber{color:var(--amber);}
+.loading{display:flex;align-items:center;gap:8px;padding:12px;font-size:11px;color:var(--text3);font-family:var(--sans);}
+.spinner{width:12px;height:12px;border:1.5px solid var(--surface3);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.badge{font-size:9px;padding:2px 7px;border-radius:99px;font-family:var(--mono);display:inline-flex;align-items:center;gap:3px;}
+.badge.verified{background:var(--green-dim);color:var(--green);border:1px solid var(--green-border);}
+.badge.unverified{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber-border);}
+.badge.live{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(77,159,255,0.3);}
+.badge.demo{background:var(--surface3);color:var(--text3);border:1px solid var(--border);}
+.tag{font-size:9px;padding:1px 6px;border-radius:4px;font-family:var(--mono);display:inline-block;}
+.tag.new{background:var(--green-dim);color:var(--green);}
+.tag.hot{background:var(--amber-dim);color:var(--amber);}
+.ai-panel{display:flex;flex-direction:column;}
+.ai-messages{overflow-y:auto;padding-bottom:12px;max-height:calc(100vh - 280px);min-height:200px;}
+.ai-messages::-webkit-scrollbar{width:3px;}
+.ai-messages::-webkit-scrollbar-thumb{background:var(--surface3);}
+.ai-msg{margin-bottom:12px;}
+.ai-msg-role{font-size:9px;letter-spacing:0.12em;color:var(--text3);font-family:var(--sans);text-transform:uppercase;margin-bottom:4px;}
+.ai-msg-body{font-size:12px;font-family:var(--sans);line-height:1.7;color:var(--text2);background:var(--surface2);border-radius:8px;padding:10px 12px;}
+.ai-msg-body.user{background:var(--green-dim);color:var(--text);border:1px solid var(--green-border);}
+.ai-msg-body strong{color:var(--text);font-weight:500;}
+.ai-msg-body code{font-family:var(--mono);font-size:11px;color:var(--green);}
+.ai-input-row{display:flex;gap:6px;padding-top:10px;border-top:1px solid var(--border);}
+.ai-input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:11px;color:var(--text);font-family:var(--sans);outline:none;}
+.ai-input:focus{border-color:rgba(0,229,160,0.4);}
+.ai-input::placeholder{color:var(--text3);}
+.api-row{display:flex;gap:6px;margin-bottom:8px;align-items:center;}
+.api-label{font-size:10px;color:var(--text3);font-family:var(--sans);width:120px;flex-shrink:0;}
+.api-input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:10px;color:var(--text);font-family:var(--mono);outline:none;}
+.api-input:focus{border-color:rgba(0,229,160,0.4);}
+.api-status-ok{font-size:9px;font-family:var(--mono);padding:2px 6px;border-radius:4px;background:var(--green-dim);color:var(--green);white-space:nowrap;}
+.api-status-none{font-size:9px;font-family:var(--mono);padding:2px 6px;border-radius:4px;background:var(--surface3);color:var(--text3);white-space:nowrap;}
+.vault-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.action-row{display:flex;gap:8px;margin-top:12px;}
+.proto-badge{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:12px;}
+.proto-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;background:var(--green-dim);color:var(--green);}
+.proto-name{font-size:13px;color:var(--text);font-family:var(--sans);font-weight:500;}
+.proto-tvl{font-size:10px;color:var(--text3);font-family:var(--sans);}
+.error-note{font-size:11px;color:var(--amber);font-family:var(--sans);padding:8px 12px;background:var(--amber-dim);border:1px solid var(--amber-border);border-radius:6px;margin-bottom:10px;}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;display:inline-block;}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-mark">⬡ Chaperone</div>
+    <div class="logo-sub">Multi-chain DeFi guide · v2</div>
+  </div>
+  <div class="chain-switcher">
+    <div class="chain-label">Network</div>
+    <div class="chain-btns">
+      <button class="chain-btn active eth" id="btn-eth" onclick="switchChain('eth')">ETH</button>
+      <button class="chain-btn sol" id="btn-sol" onclick="switchChain('sol')">SOL</button>
+      <button class="chain-btn arb" id="btn-arb" onclick="switchChain('arb')">ARB</button>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Inspect</div>
+    <div class="nav-item active" id="nav-inspector" onclick="showPage('inspector',this)"><span>⬡</span> TX Inspector</div>
+    <div class="nav-item" id="nav-approvals" onclick="showPage('approvals',this)"><span>⚠</span> Approvals</div>
+    <div class="nav-section">DeFi Actions</div>
+    <div class="nav-item" id="nav-stake" onclick="showPage('stake',this)"><span>◈</span> Stake / Unstake</div>
+    <div class="nav-item" id="nav-vaults" onclick="showPage('vaults',this)"><span>◫</span> Yield Vaults</div>
+    <div class="nav-item" id="nav-swap" onclick="showPage('swap',this)"><span>⇄</span> Swap</div>
+    <div class="nav-item" id="nav-lend" onclick="showPage('lend',this)"><span>◎</span> Lend / Borrow</div>
+    <div class="nav-section">Intelligence</div>
+    <div class="nav-item" id="nav-ai" onclick="showPage('ai',this)"><span>◉</span> AI Advisor</div>
+    <div class="nav-item" id="nav-portfolio" onclick="showPage('portfolio',this)"><span>◧</span> Portfolio</div>
+    <div class="nav-section">Config</div>
+    <div class="nav-item" id="nav-settings" onclick="showPage('settings',this)"><span>◌</span> API Keys</div>
+  </nav>
+  <div class="wallet-area">
+    <div class="wallet-label">Wallet</div>
+    <input class="wallet-input" id="wallet-addr" placeholder="0x… or Sol address" value="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" />
+    <button class="wallet-go" onclick="loadWallet()">Load wallet →</button>
+  </div>
+</aside>
+<div class="main">
+  <div class="topbar">
+    <span class="page-title" id="page-title">TX INSPECTOR</span>
+    <div class="status-bar">
+      <div class="pulse"></div>
+      <span id="chain-label">Ethereum Mainnet</span>
+      <span id="block-num" style="color:var(--text3)">—</span>
+      <span class="live-price" id="eth-price"></span>
+      <span class="live-price" id="sol-price"></span>
+    </div>
+  </div>
+  <div class="content" id="content"></div>
+</div>
+</div>
+
+<script>
+// ═══════════════════════ STATE ═══════════════════════════
+const S = {
+  chain:'eth', wallet:'0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+  page:'inspector', gasIdx:1, txLoaded:false, txData:null,
+  inspectTab:'overview', stakeTab:'stake', stakeProtoIdx:0,
+  selectedVault:null, aiMessages:[], aiLoading:false,
+  vaults:[], vaultsLoaded:false, vaultsLoading:false,
+  prices:{eth:0,sol:0,btc:0}, gasData:null, portfolioData:null,
+  keys:{
+    alchemy: localStorage.getItem('cc_alchemy')||'',
+    helius:  localStorage.getItem('cc_helius')||'',
+    etherscan: localStorage.getItem('cc_etherscan')||''
+  }
+};
+
+// ═══════════════════════ CHAIN ════════════════════════════
+const CHAINS = {
+  eth:{name:'Ethereum Mainnet',label:'ETH',explorerTx:'https://etherscan.io/tx/',explorerAddr:'https://etherscan.io/address/'},
+  sol:{name:'Solana Mainnet',label:'SOL',explorerTx:'https://solscan.io/tx/',explorerAddr:'https://solscan.io/account/'},
+  arb:{name:'Arbitrum One',label:'ARB',explorerTx:'https://arbiscan.io/tx/',explorerAddr:'https://arbiscan.io/address/'},
+};
+
+// ═══════════════════════ RPC HELPERS ═════════════════════
+function getEvmRpc(chain){
+  const k=S.keys.alchemy;
+  if(k){
+    if(chain==='eth') return `https://eth-mainnet.g.alchemy.com/v2/${k}`;
+    if(chain==='arb') return `https://arb-mainnet.g.alchemy.com/v2/${k}`;
+  }
+  if(chain==='arb') return 'https://arb1.arbitrum.io/rpc';
+  return 'https://eth.llamarpc.com';
+}
+function getSolRpc(){
+  return S.keys.helius ? `https://mainnet.helius-rpc.com/?api-key=${S.keys.helius}` : 'https://api.mainnet-beta.solana.com';
+}
+async function evmRpc(method,params,chain){
+  chain=chain||S.chain;
+  try{
+    const r=await fetch(getEvmRpc(chain==='sol'?'eth':chain),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});
+    const d=await r.json();
+    if(d.error) throw new Error(d.error.message);
+    return d.result;
+  }catch(e){console.warn('EVM RPC',e.message);return null;}
+}
+async function solRpc(method,params){
+  try{
+    const r=await fetch(getSolRpc(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});
+    const d=await r.json();
+    if(d.error) throw new Error(d.error.message);
+    return d.result;
+  }catch(e){console.warn('SOL RPC',e.message);return null;}
+}
+async function etherscanGet(params){
+  const key=S.keys.etherscan||'YourApiKeyToken';
+  const base=S.chain==='arb'?'https://api.arbiscan.io/api':'https://api.etherscan.io/api';
+  const qs=Object.entries({...params,apikey:key}).map(([k,v])=>`${k}=${v}`).join('&');
+  try{const r=await fetch(`${base}?${qs}`);return await r.json();}catch(e){return null;}
+}
+
+// ═══════════════════════ LIVE DATA ════════════════════════
+async function fetchPrices(){
+  try{
+    const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,solana,bitcoin&vs_currencies=usd');
+    const d=await r.json();
+    S.prices.eth=d.ethereum?.usd||0;
+    S.prices.sol=d.solana?.usd||0;
+    S.prices.btc=d.bitcoin?.usd||0;
+    const ep=document.getElementById('eth-price');
+    const sp=document.getElementById('sol-price');
+    if(ep&&S.prices.eth) ep.textContent=`ETH $${S.prices.eth.toLocaleString()}`;
+    if(sp&&S.prices.sol) sp.textContent=`SOL $${S.prices.sol.toFixed(2)}`;
+  }catch(e){}
+}
+
+async function fetchBlockNum(){
+  if(S.chain==='sol'){
+    const slot=await solRpc('getSlot',[]);
+    const el=document.getElementById('block-num');
+    if(el&&slot) el.textContent=`slot #${Number(slot).toLocaleString()}`;
+  } else {
+    const hex=await evmRpc('eth_blockNumber',[]);
+    const el=document.getElementById('block-num');
+    if(el&&hex) el.textContent=`block #${parseInt(hex,16).toLocaleString()}`;
+  }
+}
+
+async function fetchGasData(){
+  if(S.chain==='sol'){S.gasData={slow:'1k',mid:'5k',fast:'25k',unit:'lamports',usd:['0.00002','0.0001','0.0005']};return;}
+  try{
+    const gasPriceHex=await evmRpc('eth_gasPrice',[]);
+    const baseGwei=gasPriceHex?(parseInt(gasPriceHex,16)/1e9):30;
+    const slow=(baseGwei*0.8).toFixed(1),mid=baseGwei.toFixed(1),fast=(baseGwei*1.4).toFixed(1);
+    const ep=S.prices.eth||2500;
+    const gl=65000;
+    S.gasData={slow,mid,fast,unit:'gwei',usd:[
+      ((parseFloat(slow)*1e9*gl)/1e18*ep).toFixed(3),
+      ((parseFloat(mid)*1e9*gl)/1e18*ep).toFixed(3),
+      ((parseFloat(fast)*1e9*gl)/1e18*ep).toFixed(3)
+    ]};
+  }catch(e){S.gasData={slow:'20',mid:'27',fast:'36',unit:'gwei',usd:['1.10','1.49','1.98']};}
+}
+
+async function fetchLlamaYields(){
+  if(S.vaultsLoaded) return;
+  S.vaultsLoading=true;
+  renderPage();
+  try{
+    const r=await fetch('https://yields.llama.fi/pools');
+    const d=await r.json();
+    const targets=['aave-v3','lido','jito','rocket-pool','compound-v3','gmx','kamino','pendle','marginfi','marinade','blazestake','morpho','solend'];
+    S.vaults=(d.data||[])
+      .filter(p=>targets.some(t=>(p.project||'').toLowerCase().includes(t))&&p.apy>0&&p.tvlUsd>500000)
+      .sort((a,b)=>b.tvlUsd-a.tvlUsd)
+      .slice(0,16);
+    S.vaultsLoaded=true;
+  }catch(e){S.vaults=[];}
+  S.vaultsLoading=false;
+  renderPage();
+}
+
+async function fetchPortfolio(){
+  try{
+    if(S.chain==='sol'){
+      const w=S.wallet;
+      const [balRes,tokRes]=await Promise.all([
+        solRpc('getBalance',[w]),
+        solRpc('getTokenAccountsByOwner',[w,{programId:'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'},{encoding:'jsonParsed'}])
+      ]);
+      const solBal=(balRes?.value||0)/1e9;
+      const tokens=(tokRes?.value||[]).slice(0,10).map(t=>{
+        const info=t.account?.data?.parsed?.info;
+        return{mint:(info?.mint||'').slice(0,8)+'…',amount:(info?.tokenAmount?.uiAmount||0).toFixed(4)};
+      }).filter(t=>parseFloat(t.amount)>0.001);
+      S.portfolioData={type:'sol',solBal,tokens};
+    } else {
+      const ethHex=await evmRpc('eth_getBalance',[S.wallet,'latest']);
+      const ethBal=ethHex?(parseInt(ethHex,16)/1e18).toFixed(6):'—';
+      S.portfolioData={type:'evm',ethBal};
+    }
+  }catch(e){S.portfolioData=null;}
+  renderPage();
+}
+
+// ═══════════════════════ TX DECODERS ═════════════════════
+const SEL={
+  '0xa9059cbb':'transfer(address,uint256)',
+  '0x095ea7b3':'approve(address,uint256)',
+  '0x23b872dd':'transferFrom(address,address,uint256)',
+  '0x38ed1739':'swapExactTokensForTokens(…)',
+  '0x7ff36ab5':'swapExactETHForTokens(…)',
+  '0x18cbafe5':'swapExactTokensForETH(…)',
+  '0x2e1a7d4d':'withdraw(uint256)',
+  '0xd0e30db0':'deposit()',
+  '0x6e553f65':'deposit(uint256,address)',
+  '0xe2bbb158':'deposit(uint256,uint256)',
+};
+
+function analyzeEvmRisks(sel,tx,verified,cname){
+  const r=[];
+  r.push(verified
+    ?{level:'ok',label:`Contract verified: ${cname}`,sub:'Source code is publicly readable'}
+    :{level:'warn',label:'Contract not verified on Etherscan',sub:'Cannot inspect source — review calldata carefully'});
+  if(sel==='0x095ea7b3'){
+    const amtHex=(tx.input||'').slice(74,138);
+    const isUnlimited=BigInt('0x'+amtHex)>BigInt('0x'+'f'.repeat(60));
+    r.push(isUnlimited
+      ?{level:'danger',label:'UNLIMITED token approval',sub:'Grants permanent access to ALL tokens of this type. Revoke when done.'}
+      :{level:'warn',label:'Token approval granted',sub:'Gives spending permission to a contract'});
+  } else if(sel==='0xa9059cbb'){
+    r.push({level:'ok',label:'Standard ERC-20 transfer — no approvals',sub:'No spending permissions created'});
+  } else if(['0x38ed1739','0x7ff36ab5','0x18cbafe5'].includes(sel)){
+    r.push({level:'warn',label:'DEX swap — verify slippage',sub:'Check minimum received amount'});
+    r.push({level:'warn',label:'MEV / sandwich-attack exposure',sub:'Use Flashbots Protect for large swaps on mainnet'});
+  }
+  if(!tx.to) r.push({level:'danger',label:'Contract deployment',sub:'This deploys new bytecode to the chain'});
+  return r;
+}
+
+function analyzeSolanaRisks(prog,fn){
+  const r=[];
+  const canonical=['System Program','SPL Token Program'];
+  r.push(canonical.includes(prog)
+    ?{level:'ok',label:`${prog} — canonical runtime`,sub:'No third-party contract involved'}
+    :{level:'warn',label:`Third-party program: ${prog}`,sub:'Verify this program ID matches official deployment'});
+  if(fn.includes('swap')||fn.includes('route'))
+    r.push({level:'warn',label:'DEX swap — verify min output',sub:'Jupiter routes across multiple pools'});
+  r.push({level:'ok',label:'Per-transaction authorization (no persistent approvals)',sub:'Lower residual risk than EVM approve model'});
+  return r;
+}
+
+async function fetchEvmTx(hash){
+  const[tx,receipt]=await Promise.all([evmRpc('eth_getTransactionByHash',[hash]),evmRpc('eth_getTransactionReceipt',[hash])]);
+  if(!tx) return null;
+  const sel=tx.input?.slice(0,10)||'0x';
+  let fn=sel==='0x'||tx.input==='0x'?'ETH Transfer (native)':(SEL[sel]||`${sel} (unknown function)`);
+  let verified=false,cname=tx.to||'—';
+  if(tx.to&&S.keys.etherscan){
+    const res=await etherscanGet({module:'contract',action:'getsourcecode',address:tx.to});
+    if(res?.result?.[0]?.ContractName){
+      cname=res.result[0].ContractName;
+      verified=res.result[0].ABI!=='Contract source code not verified';
+    }
+  }
+  const valEth=parseInt(tx.value||'0x0',16)/1e18;
+  const gpGwei=parseInt(tx.gasPrice||'0x0',16)/1e9;
+  const gasUsed=receipt?parseInt(receipt.gasUsed,16):parseInt(tx.gas,16);
+  const gasCostEth=(gpGwei*1e9*gasUsed)/1e18;
+  return{
+    hash,fn,sel,contract:tx.to||'—',contractName:cname,verified,
+    from:tx.from,
+    value:valEth>0?`${valEth.toFixed(6)} ETH`:'0',
+    valueUsd:valEth>0?`$${(valEth*(S.prices.eth||2500)).toFixed(2)}`:'',
+    gasUsed:gasUsed.toLocaleString(),gasPrice:`${gpGwei.toFixed(2)} gwei`,
+    gasCostEth:gasCostEth.toFixed(6),gasCostUsd:(gasCostEth*(S.prices.eth||2500)).toFixed(2),
+    status:receipt?(receipt.status==='0x1'?'success':'failed'):'pending',
+    blockNumber:tx.blockNumber?parseInt(tx.blockNumber,16).toLocaleString():'pending',
+    inputData:(tx.input||'').slice(0,100)+((tx.input||'').length>100?'…':''),
+    risks:analyzeEvmRisks(sel,tx,verified,cname),
+    sim:{ethDelta:valEth>0?`−${valEth.toFixed(6)} ETH`:`−${gasCostEth.toFixed(6)} ETH (gas)`,
+         out:valEth>0?`−${valEth.toFixed(4)} ETH`:'—',
+         recipientDelta:valEth>0?`+${valEth.toFixed(4)} ETH`:'see token events',
+         newApprovals:sel==='0x095ea7b3'?'⚠ approval granted':'none'}
+  };
+}
+
+async function fetchSolanaTx(sig){
+  const tx=await solRpc('getTransaction',[sig,{encoding:'jsonParsed',maxSupportedTransactionVersion:0}]);
+  if(!tx) return null;
+  const ix=tx.transaction?.message?.instructions||[];
+  const meta=tx.meta||{};
+  const prog=ix[0]?.programId||ix[0]?.program||'';
+  let programName='Unknown Program',fn='instruction';
+  if(prog==='11111111111111111111111111111111'){programName='System Program';fn='transfer (native SOL)';}
+  else if(prog==='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'){programName='SPL Token Program';fn=ix[0]?.parsed?.type||'token instruction';}
+  else if(prog.startsWith('JUP')||prog.startsWith('J1toso')){programName='Jupiter Aggregator';fn='route swap';}
+  else if(prog==='MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD'){programName='Marinade Finance';fn='liquid stake';}
+  else if(prog==='Jito4APyf642JPZPx3hGc6WWJ8zPKtRbRs4P815Pouu'){programName='Jito Staking';fn='deposit';}
+  else{programName=prog.slice(0,18)+'…';}
+  const feeSol=((meta.fee||5000)/1e9).toFixed(6);
+  const feeUsd=(parseFloat(feeSol)*(S.prices.sol||150)).toFixed(4);
+  const keys=tx.transaction?.message?.accountKeys||[];
+  const pre=meta.preBalances||[];
+  const post=meta.postBalances||[];
+  const changes=keys.map((k,i)=>({addr:typeof k==='string'?k:k.pubkey,delta:((post[i]||0)-(pre[i]||0))/1e9})).filter(c=>Math.abs(c.delta)>0.000001);
+  return{
+    hash:sig,fn,contract:programName,contractName:programName,verified:['System Program','SPL Token Program'].includes(programName),
+    from:typeof keys[0]==='string'?keys[0]:keys[0]?.pubkey||'—',
+    slot:(tx.slot||'').toString(),feeSol,feeUsd,
+    status:meta.err?'failed':'success',
+    balanceChanges:changes.slice(0,4),
+    risks:analyzeSolanaRisks(programName,fn),
+    sim:{ethDelta:`−${feeSol} SOL (fee)`,
+         out:changes.find(c=>c.delta<0)?`${changes.find(c=>c.delta<0).delta.toFixed(4)} SOL`:'—',
+         recipientDelta:changes.find(c=>c.delta>0)?`+${changes.find(c=>c.delta>0).delta.toFixed(4)} SOL`:'—',
+         newApprovals:'N/A (per-tx auth model)'}
+  };
+}
+
+async function fetchApprovals(){
+  if(S.chain==='sol') return[
+    {protocol:'Raydium AMM v4',token:'USDC',amount:'Unlimited',unlimited:true},
+    {protocol:'Orca Whirlpools',token:'WSOL',amount:'1,000 WSOL',unlimited:false},
+  ];
+  if(!S.keys.etherscan) return[
+    {protocol:'Uniswap V3 Router',token:'USDC',amount:'Unlimited',unlimited:true},
+    {protocol:'Aave V3 Pool',token:'USDC',amount:'Unlimited',unlimited:true},
+    {protocol:'1inch Aggregator',token:'WETH',amount:'Unlimited',unlimited:true},
+  ];
+  const res=await etherscanGet({module:'logs',action:'getLogs',address:S.wallet,topic0:'0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925',fromBlock:'0',toBlock:'latest',page:'1',offset:'20'});
+  if(!res?.result?.length) return[];
+  const seen=new Set();
+  return res.result.filter(l=>{const s='0x'+(l.topics[2]||'').slice(26);if(seen.has(s))return false;seen.add(s);return true;})
+    .slice(0,8).map(l=>{
+      const s='0x'+(l.topics[2]||'').slice(26);
+      const amt=BigInt('0x'+(l.data||'0x').replace('0x','').padStart(64,'0'));
+      const isUnlimited=amt>BigInt('0x'+'f'.repeat(60));
+      return{protocol:s.slice(0,12)+'…',token:'ERC-20',amount:isUnlimited?'Unlimited':amt.toString().slice(0,8)+'…',unlimited:isUnlimited};
+    });
+}
+
+// ═══════════════════════ NAV ══════════════════════════════
+function switchChain(c){
+  S.chain=c;S.txLoaded=false;S.txData=null;S.gasData=null;
+  document.querySelectorAll('.chain-btn').forEach(b=>b.classList.remove('active','eth','sol','arb'));
+  document.getElementById('btn-'+c)?.classList.add('active',c);
+  document.getElementById('chain-label').textContent=CHAINS[c].name;
+  document.getElementById('block-num').textContent='—';
+  fetchBlockNum();if(c!=='sol')fetchGasData();
+  renderPage();
+}
+function showPage(p,el){
+  S.page=p;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  (el||document.getElementById('nav-'+p))?.classList.add('active');
+  const T={inspector:'TX INSPECTOR',approvals:'TOKEN APPROVALS',stake:'STAKE / UNSTAKE',vaults:'YIELD VAULTS',swap:'TOKEN SWAP',lend:'LEND / BORROW',ai:'AI ADVISOR',portfolio:'PORTFOLIO',settings:'API KEYS'};
+  document.getElementById('page-title').textContent=T[p]||p.toUpperCase();
+  renderPage();
+  if(p==='vaults'&&!S.vaultsLoaded) fetchLlamaYields();
+  if(p==='portfolio') fetchPortfolio();
+}
+function loadWallet(){S.wallet=document.getElementById('wallet-addr').value.trim();S.portfolioData=null;renderPage();}
+
+// ═══════════════════════ RENDER ═══════════════════════════
+function renderPage(){
+  const c=document.getElementById('content');if(!c)return;
+  switch(S.page){
+    case 'inspector':c.innerHTML=renderInspector();break;
+    case 'approvals':c.innerHTML=renderApprovalsShell();setTimeout(()=>loadApprovalsData(),50);break;
+    case 'stake':    c.innerHTML=renderStake();break;
+    case 'vaults':   c.innerHTML=renderVaults();break;
+    case 'swap':     c.innerHTML=renderSwap();break;
+    case 'lend':     c.innerHTML=renderLend();break;
+    case 'ai':       c.innerHTML=renderAIShell();restoreAIMessages();break;
+    case 'portfolio':c.innerHTML=renderPortfolio();break;
+    case 'settings': c.innerHTML=renderSettings();break;
+  }
+}
+
+// ── INSPECTOR ─────────────────────────────────────────────
+function renderInspector(){
+  const ph=S.chain==='sol'?'Solana tx signature (5UzJR…)':'Transaction hash (0x…)';
+  return`
+<div class="card">
+  <div class="card-title">Live transaction decoder <span class="live-dot"></span></div>
+  <div class="tx-input-row">
+    <input class="tx-field" id="tx-hash" placeholder="${ph}" />
+    <button class="btn btn-primary" onclick="runInspect()">Inspect →</button>
+    <button class="btn" onclick="loadDemoTx()">Demo</button>
+  </div>
+  ${!S.keys.alchemy&&S.chain!=='sol'?`<div class="error-note">No Alchemy key — using public RPC. Add key in API Keys for enhanced decoding.</div>`:''}
+</div>
+${S.txLoaded&&S.txData?renderInspectResult():renderInspectorIdle()}`;
+}
+function renderInspectorIdle(){
+  return`<div style="padding:32px;text-align:center;color:var(--text3);font-family:var(--sans);font-size:12px;border:1px dashed var(--border);border-radius:10px;line-height:1.8;">
+    Paste a transaction hash above and click <strong style="color:var(--text2)">Inspect</strong> to decode it live from the blockchain.<br>
+    Or click <strong style="color:var(--text2)">Demo</strong> to load a sample transaction.
+  </div>`;
+}
+function renderInspectResult(){
+  return`
+<div class="tabs">
+  <div class="tab ${S.inspectTab==='overview'?'active':''}" onclick="S.inspectTab='overview';renderPage()">Overview</div>
+  <div class="tab ${S.inspectTab==='simulation'?'active':''}" onclick="S.inspectTab='simulation';renderPage()">Simulation</div>
+  <div class="tab ${S.inspectTab==='explain'?'active':''}" onclick="S.inspectTab='explain';renderPage()">AI Explanation</div>
+</div>
+${S.inspectTab==='overview'?renderTxOverview():''}
+${S.inspectTab==='simulation'?renderTxSim():''}
+${S.inspectTab==='explain'?renderTxExplain():''}`;
+}
+function renderTxOverview(){
+  const tx=S.txData,isSol=S.chain==='sol';
+  const risks=tx.risks.map(r=>`<div class="risk-item"><div class="risk-dot ${r.level}"></div><div><div class="risk-text">${r.label}</div><div class="risk-sub">${r.sub}</div></div></div>`).join('');
+  const gas=S.gasData||{slow:'—',mid:'—',fast:'—',unit:'gwei',usd:['—','—','—']};
+  const gasOpts=[{speed:'Slow',val:gas.slow,usd:gas.usd[0]},{speed:'Standard',val:gas.mid,usd:gas.usd[1]},{speed:'Fast',val:gas.fast,usd:gas.usd[2]}];
+  return`
+<div class="card">
+  <div class="card-title">Decoded transaction <span class="badge live">live</span></div>
+  <div class="data-row"><span class="dr-key">Function</span><span class="dr-val green">${tx.fn}</span></div>
+  <div class="data-row"><span class="dr-key">${isSol?'Program':'Contract'}</span><span class="dr-val addr">${(tx.contract||'').slice(0,20)}… <span class="badge ${tx.verified?'verified':'unverified'}">${tx.verified?'✓ verified':'⚠ unverified'}</span></span></div>
+  ${tx.contractName&&tx.contractName!==tx.contract?`<div class="data-row"><span class="dr-key">Name</span><span class="dr-val">${tx.contractName}</span></div>`:''}
+  <div class="data-row"><span class="dr-key">From</span><span class="dr-val addr">${(tx.from||'').slice(0,22)}…</span></div>
+  ${tx.value&&tx.value!=='0'?`<div class="data-row"><span class="dr-key">Value</span><span class="dr-val">${tx.value}${tx.valueUsd?` <span style="color:var(--text3);font-size:10px;">${tx.valueUsd}</span>`:''}</span></div>`:''}
+  ${isSol
+    ?`<div class="data-row"><span class="dr-key">Slot</span><span class="dr-val">${tx.slot}</span></div>
+      <div class="data-row"><span class="dr-key">Fee</span><span class="dr-val">${tx.feeSol} SOL <span style="color:var(--text3);font-size:10px;">$${tx.feeUsd}</span></span></div>`
+    :`<div class="data-row"><span class="dr-key">Block</span><span class="dr-val">${tx.blockNumber}</span></div>
+      <div class="data-row"><span class="dr-key">Gas used</span><span class="dr-val">${tx.gasUsed}</span></div>
+      <div class="data-row"><span class="dr-key">Gas price</span><span class="dr-val">${tx.gasPrice}</span></div>
+      <div class="data-row"><span class="dr-key">Gas cost</span><span class="dr-val">${tx.gasCostEth} ETH <span style="color:var(--text3);font-size:10px;">$${tx.gasCostUsd}</span></span></div>`}
+  <div class="data-row"><span class="dr-key">Status</span><span class="dr-val ${tx.status==='success'?'green':tx.status==='failed'?'red':'amber'}">${tx.status}</span></div>
+</div>
+<div class="card"><div class="card-title">Risk assessment</div>${risks}</div>
+<div class="card">
+  <div class="card-title">Live fee estimate <span class="badge live">live</span></div>
+  <div class="gas-grid">
+    ${gasOpts.map((g,i)=>`<div class="gas-opt ${S.gasIdx===i?'selected':''}" onclick="S.gasIdx=${i};renderPage()"><div class="gas-speed">${g.speed}</div><div class="gas-gwei">${g.val} ${gas.unit}</div><div class="gas-usd">~$${g.usd}</div></div>`).join('')}
+  </div>
+</div>`;
+}
+function renderTxSim(){
+  const tx=S.txData,isSol=S.chain==='sol';
+  const balChanges=isSol&&tx.balanceChanges?tx.balanceChanges.map(c=>`<div class="data-row"><span class="dr-key">${c.addr.slice(0,14)}…</span><span class="dr-val ${c.delta>0?'green':'red'}">${c.delta>0?'+':''}${c.delta.toFixed(4)} SOL</span></div>`).join(''):'';
+  return`
+<div class="card">
+  <div class="card-title">Simulated balance changes</div>
+  <div class="diff-grid">
+    <div class="diff-cell"><div class="diff-label">${isSol?'SOL':'ETH'} impact</div><div class="diff-val neg">${tx.sim.ethDelta}</div></div>
+    <div class="diff-cell"><div class="diff-label">Token out</div><div class="diff-val neg">${tx.sim.out}</div></div>
+    <div class="diff-cell"><div class="diff-label">Recipient receives</div><div class="diff-val pos">${tx.sim.recipientDelta}</div></div>
+    <div class="diff-cell"><div class="diff-label">New approvals</div><div class="diff-val ${tx.sim.newApprovals==='none'||tx.sim.newApprovals.startsWith('N/A')?'neutral':'amber'}">${tx.sim.newApprovals}</div></div>
+  </div>
+</div>
+${isSol&&balChanges?`<div class="card"><div class="card-title">On-chain balance changes <span class="badge live">live</span></div>${balChanges}</div>`:''}
+<div class="card">
+  <div class="card-title">Call trace</div>
+  <div class="trace">
+    <span class="t-ok">✓ CALL ${tx.fn}</span>
+    ${tx.inputData?`<span class="t-info">input: ${tx.inputData}</span>`:''}
+    <span class="t-info">→ executed on ${CHAINS[S.chain].name}</span>
+    <span class="t-ok">STATUS: ${(tx.status||'').toUpperCase()}</span>
+  </div>
+</div>
+<div class="action-row">
+  <button class="btn btn-primary" onclick="S.inspectTab='explain';renderPage()">Get AI explanation →</button>
+  <a href="${CHAINS[S.chain].explorerTx}${tx.hash}" target="_blank" style="text-decoration:none"><button class="btn">View on explorer ↗</button></a>
+</div>`;
+}
+function renderTxExplain(){
+  setTimeout(()=>generateTxExplanation(),80);
+  return`<div class="card"><div class="card-title">AI explanation</div><div id="explain-content"><div class="loading"><div class="spinner"></div>Generating explanation…</div></div></div>`;
+}
+async function generateTxExplanation(){
+  const tx=S.txData;
+  const el=document.getElementById('explain-content');if(!el)return;
+  const prompt=`Explain this ${S.chain.toUpperCase()} transaction plainly: Function="${tx.fn}", Contract="${tx.contractName||tx.contract}", Verified=${tx.verified}, Value="${tx.value||'0'}", Status="${tx.status}". Key risks: ${tx.risks.map(r=>r.label).join('; ')}. Keep under 220 words. Use plain paragraphs. Use <strong> for key terms and amounts. Flag anything dangerous clearly.`;
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:'You are Crypto Chaperone, a DeFi transaction safety advisor. Explain transactions clearly. Use <strong> tags. Never make financial recommendations.',messages:[{role:'user',content:prompt}]})});
+    const d=await r.json();
+    const text=d.content?.[0]?.text||'Could not generate explanation.';
+    if(el) el.innerHTML=`<div class="explain-block info">${text}</div><div class="action-row" style="margin-top:8px;"><button class="btn" onclick="askAIAboutTx()">Ask follow-up ↗</button><button class="btn btn-danger" onclick="showPage('approvals',document.getElementById('nav-approvals'))">Review approvals</button></div>`;
+  }catch(e){
+    if(el) el.innerHTML=`<div class="error-note">Could not generate AI explanation. Check network or add API key.</div>`;
+  }
+}
+
+// ── APPROVALS ─────────────────────────────────────────────
+function renderApprovalsShell(){return`<div id="approvals-content"><div class="loading"><div class="spinner"></div>Loading approvals for ${S.wallet.slice(0,14)}…</div></div>`;}
+async function loadApprovalsData(){
+  const approvals=await fetchApprovals();
+  const el=document.getElementById('approvals-content');if(!el)return;
+  const unlimited=approvals.filter(a=>a.unlimited);
+  el.innerHTML=`
+<div class="portfolio-grid">
+  <div class="port-stat"><div class="port-label">Total</div><div class="port-val">${approvals.length}</div></div>
+  <div class="port-stat"><div class="port-label">Unlimited</div><div class="port-val amber">${unlimited.length}</div></div>
+  <div class="port-stat"><div class="port-label">Risk</div><div class="port-val ${unlimited.length>2?'amber':'green'}">${unlimited.length>2?'Medium':'Low'}</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Active approvals ${S.keys.etherscan?'<span class="badge live">live · Etherscan</span>':'<span class="badge demo">demo data — add Etherscan key for live</span>'}</div>
+  ${approvals.map(a=>`<div class="approval-row"><span class="approval-protocol">${a.protocol}</span><span class="approval-token">${a.token}</span><span class="approval-amount ${a.unlimited?'unlimited':''}">${a.amount}</span><button class="revoke-btn" onclick="quickAsk('How do I revoke my ${a.token} approval to ${a.protocol}? What transaction do I sign and what does it cost?')">revoke ↗</button></div>`).join('')}
+</div>
+${unlimited.length>0?`<div class="explain-block danger"><strong>${unlimited.length} unlimited approval${unlimited.length!==1?'s':''}</strong> detected. Each grants permanent full access to all tokens of that type. Revoke any you no longer use — one small tx per approval.</div><button class="btn btn-danger" style="width:100%;" onclick="quickAsk('Walk me through revoking all my unlimited token approvals. What tool should I use, and what does it cost in gas?')">Revoke all unlimited approvals ↗</button>`:''}`;
+}
+
+// ── STAKE ─────────────────────────────────────────────────
+const STAKE_PROTOS={
+  eth:[{name:'Lido',apy:'4.1',receive:'stETH',tvl:'$18.2B'},{name:'Rocket Pool',apy:'3.9',receive:'rETH',tvl:'$4.1B'},{name:'Frax Ether',apy:'4.3',receive:'sfrxETH',tvl:'$780M'}],
+  sol:[{name:'Jito',apy:'8.1',receive:'jitoSOL',tvl:'$3.8B'},{name:'Marinade',apy:'7.9',receive:'mSOL',tvl:'$1.2B'},{name:'BlazeStake',apy:'7.7',receive:'bSOL',tvl:'$320M'}],
+  arb:[{name:'Lido (bridged)',apy:'4.0',receive:'wstETH',tvl:'$1.1B'},{name:'Aave V3 WETH',apy:'2.8',receive:'aWETH',tvl:'$890M'}],
+};
+function renderStake(){
+  const protos=STAKE_PROTOS[S.chain]||STAKE_PROTOS.eth;
+  const sel=protos[S.stakeProtoIdx]||protos[0];
+  const price=S.chain==='sol'?(S.prices.sol||150):(S.prices.eth||2500);
+  return`
+<div class="tabs">
+  <div class="tab ${S.stakeTab==='stake'?'active':''}" onclick="S.stakeTab='stake';renderPage()">Stake</div>
+  <div class="tab ${S.stakeTab==='unstake'?'active':''}" onclick="S.stakeTab='unstake';renderPage()">Unstake</div>
+  <div class="tab ${S.stakeTab==='positions'?'active':''}" onclick="S.stakeTab='positions';renderPage()">My Positions</div>
+</div>
+${S.stakeTab==='stake'?`
+<div class="card">
+  <div class="card-title">Select protocol</div>
+  ${protos.map((p,i)=>`<div class="action-card ${S.stakeProtoIdx===i?'selected':''}" style="margin-bottom:6px;" onclick="S.stakeProtoIdx=${i};renderPage()"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div class="ac-name">${p.name} <span class="badge verified" style="font-size:8px;">audited</span></div><div class="ac-desc">Receive ${p.receive} · TVL ${p.tvl}</div></div><div style="text-align:right;"><div style="font-size:18px;color:var(--green);font-family:var(--mono);">${p.apy}%</div><div style="font-size:9px;color:var(--text3);">APY</div></div></div></div>`).join('')}
+</div>
+<div class="card">
+  <div class="card-title">Amount</div>
+  <div class="form-group">
+    <div class="form-label">Stake <span>~4.82 ${CHAINS[S.chain].label} available</span></div>
+    <div class="token-row"><span class="token-badge ${S.chain}">${CHAINS[S.chain].label}</span><input class="form-input" style="border:none;background:transparent;padding:0;flex:1;" id="stake-amount" value="1.0" oninput="updateStakeCalc(${price},${JSON.stringify(sel)})" /><span class="token-usd" id="stake-usd">≈ $${price.toLocaleString()}</span></div>
+  </div>
+  <div class="form-group">
+    <div class="form-label">You receive</div>
+    <div class="token-row"><span class="token-badge green" id="stake-recv-badge">${sel.receive}</span><span id="stake-recv-amt" style="flex:1;font-family:var(--mono);font-size:13px;">~0.9970 ${sel.receive}</span></div>
+  </div>
+  <div class="apy-display"><span class="apy-num">${sel.apy}%</span><span class="apy-label">APY</span><span class="apy-period" id="stake-yr">Est. +$${(price*parseFloat(sel.apy)/100).toFixed(2)}/yr on 1.0 ${CHAINS[S.chain].label}</span></div>
+</div>
+<div class="explain-block warn"><strong>${sel.receive} is not the same as native ${CHAINS[S.chain].label}.</strong> It is a derivative token that can trade at a slight premium or discount and carries smart contract risk on ${sel.name}.</div>
+<div class="action-row">
+  <button class="btn btn-primary" onclick="quickAsk('Simulate staking 1.0 ${CHAINS[S.chain].label} on ${sel.name}. Walk me through every transaction needed, what I receive, any lock-up periods, and the top 3 risks.')">Simulate stake →</button>
+  <button class="btn" onclick="quickAsk('What are the specific risks of ${sel.name} liquid staking?')">Explain risks ↗</button>
+</div>`:''}
+${S.stakeTab==='unstake'?`
+<div class="card">
+  <div class="card-title">Unstake</div>
+  <div class="form-group"><div class="form-label">LST to unstake <span>Balance: 0.997 ${sel.receive}</span></div><div class="token-row"><span class="token-badge green">${sel.receive}</span><input class="form-input" style="border:none;background:transparent;padding:0;flex:1;" value="0.997" /></div></div>
+  <div class="data-row"><span class="dr-key">Queue wait</span><span class="dr-val amber">${S.chain==='sol'?'2–3 epochs (~4 days)':'1–5 days'}</span></div>
+  <div class="data-row"><span class="dr-key">Alternative</span><span class="dr-val">Swap on DEX (instant)</span></div>
+</div>
+<div class="explain-block info">Unstaking queues your request; you claim ${CHAINS[S.chain].label} after processing. For instant exit, swap ${sel.receive} → ${CHAINS[S.chain].label} on a DEX at typically &lt;0.1% cost.</div>
+<div class="action-row"><button class="btn btn-primary" onclick="quickAsk('Walk me through unstaking ${sel.receive} on ${sel.name} step by step')">Simulate unstake →</button><button class="btn" onclick="quickAsk('Compare ${sel.name} withdrawal queue vs swapping ${sel.receive} on a DEX right now')">Compare exit routes ↗</button></div>`:''}
+${S.stakeTab==='positions'?`
+<div class="card">
+  <div class="card-title">Active positions</div>
+  <div class="data-row"><span class="dr-key">Lido stETH</span><span class="dr-val green">0.997 stETH · $${(0.997*(S.prices.eth||2500)).toFixed(0)} · 4.1%</span></div>
+  <div class="data-row"><span class="dr-key">Jito jitoSOL</span><span class="dr-val green">45.2 jitoSOL · $${(45.2*(S.prices.sol||150)).toFixed(0)} · 8.1%</span></div>
+</div>`:''}`;
+}
+
+// ── VAULTS ────────────────────────────────────────────────
+function renderVaults(){
+  if(S.selectedVault) return renderVaultDetail(S.selectedVault);
+  if(S.vaultsLoading) return`<div class="loading"><div class="spinner"></div>Loading live vault data from DeFiLlama…</div>`;
+  const cards=S.vaults.length>0?buildVaultCards():fallbackVaultCards();
+  return`
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+  <span>${S.vaults.length>0?`<span class="badge live">live · DeFiLlama · ${S.vaults.length} pools</span>`:'<span class="badge demo">demo data — DeFiLlama loads on next open</span>'}</span>
+  <button class="btn btn-sm" onclick="S.vaultsLoaded=false;S.vaults=[];fetchLlamaYields()">Refresh ↻</button>
+</div>
+<div class="vault-grid">${cards}</div>`;
+}
+function buildVaultCards(){
+  return S.vaults.slice(0,12).map(v=>{
+    const chain=(v.chain||'').toLowerCase();
+    const cc=chain.includes('solana')?'sol':chain.includes('arbitrum')?'arb':'eth';
+    const riskColor=v.apy>15?'var(--red)':v.apy>8?'var(--amber)':'var(--green)';
+    const riskLabel=v.apy>15?'high risk':v.apy>8?'medium risk':'lower risk';
+    const tvl=v.tvlUsd>1e9?`$${(v.tvlUsd/1e9).toFixed(1)}B`:v.tvlUsd>1e6?`$${(v.tvlUsd/1e6).toFixed(0)}M`:'—';
+    const safeV=JSON.stringify({project:v.project,symbol:v.symbol,apy:v.apy,tvlUsd:v.tvlUsd,chain:v.chain}).replace(/"/g,'&quot;');
+    return`<div class="action-card" onclick="S.selectedVault=${safeV};renderPage()"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;"><div><div class="ac-name">${v.project} ${v.symbol}</div><div style="font-size:10px;color:var(--text3);font-family:var(--sans);">TVL ${tvl}</div></div><div style="text-align:right;flex-shrink:0;"><div style="font-size:16px;color:var(--green);font-family:var(--mono);">${v.apy.toFixed(1)}%</div><div style="font-size:9px;color:var(--text3);">APY</div></div></div><div style="display:flex;justify-content:space-between;align-items:center;"><span class="ac-chain ${cc}">${cc.toUpperCase()}</span><span style="font-size:10px;color:${riskColor};font-family:var(--sans);">${riskLabel}</span></div></div>`;
+  }).join('');
+}
+function fallbackVaultCards(){
+  return[
+    {n:'Aave V3 USDC',p:'Aave',c:'eth',a:8.4,r:'low',t:'$2.1B'},
+    {n:'Jito jitoSOL',p:'Jito',c:'sol',a:8.1,r:'low',t:'$3.8B'},
+    {n:'GMX GM ETH/USDC',p:'GMX',c:'arb',a:22.7,r:'high',t:'$480M'},
+    {n:'Kamino USDC',p:'Kamino',c:'sol',a:11.2,r:'medium',t:'$220M'},
+    {n:'Lido stETH',p:'Lido',c:'eth',a:4.1,r:'low',t:'$18.2B'},
+    {n:'Pendle PT-stETH',p:'Pendle',c:'eth',a:5.8,r:'medium',t:'$340M'},
+  ].map(v=>{
+    const rc=v.r==='high'?'var(--red)':v.r==='medium'?'var(--amber)':'var(--green)';
+    const sv=JSON.stringify({project:v.p,symbol:v.n.split(' ').slice(-1)[0],apy:v.a,tvlUsd:1e9,chain:v.c,name:v.n,token:v.n}).replace(/"/g,'&quot;');
+    return`<div class="action-card" onclick="S.selectedVault=${sv};renderPage()"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;"><div><div class="ac-name">${v.n}</div><div style="font-size:10px;color:var(--text3);font-family:var(--sans);">${v.p} · TVL ${v.t}</div></div><div style="text-align:right;flex-shrink:0;"><div style="font-size:16px;color:var(--green);font-family:var(--mono);">${v.a}%</div><div style="font-size:9px;color:var(--text3);">APY</div></div></div><div style="display:flex;justify-content:space-between;align-items:center;"><span class="ac-chain ${v.c}">${v.c.toUpperCase()}</span><span style="font-size:10px;color:${rc};font-family:var(--sans);">${v.r} risk</span></div></div>`;
+  }).join('');
+}
+function renderVaultDetail(v){
+  if(typeof v==='string') try{v=JSON.parse(v);}catch(e){}
+  const apy=(parseFloat(v.apy)||0).toFixed(1);
+  const tvl=v.tvlUsd>1e9?`$${(v.tvlUsd/1e9).toFixed(1)}B`:v.tvlUsd>1e6?`$${(v.tvlUsd/1e6).toFixed(0)}M`:v.tvl||'—';
+  const name=v.name||`${v.project} ${v.symbol}`;
+  const token=v.symbol||v.token||'—';
+  return`
+<button class="btn" style="margin-bottom:14px;" onclick="S.selectedVault=null;renderPage()">← Back</button>
+<div class="proto-badge"><div class="proto-icon">◫</div><div><div class="proto-name">${name}</div><div class="proto-tvl">${v.project||v.protocol||''} · TVL ${tvl}</div></div><div style="margin-left:auto;text-align:right;"><div style="font-size:24px;color:var(--green);font-family:var(--mono);">${apy}%</div><div style="font-size:10px;color:var(--text3);font-family:var(--sans);">${S.vaultsLoaded?'live APY · DeFiLlama':'estimated'}</div></div></div>
+<div class="card">
+  <div class="card-title">Deposit</div>
+  <div class="form-group"><div class="form-label">Amount <span>Token: ${token}</span></div><div class="token-row"><span class="token-badge usdc">${token}</span><input class="form-input" style="border:none;background:transparent;padding:0;flex:1;" id="vault-amount" value="1000" oninput="document.getElementById('vault-yr').textContent='Est. +$'+(1000*parseFloat('${apy}')/100).toFixed(2)+'/yr'" /><span class="token-usd">≈ $1,000</span></div></div>
+  <div class="apy-display"><span class="apy-num">${apy}%</span><span class="apy-label">APY</span><span class="apy-period" id="vault-yr">Est. +$${(1000*parseFloat(apy)/100).toFixed(2)}/yr on $1,000</span></div>
+</div>
+<div class="card">
+  <div class="card-title">Risk factors</div>
+  <div class="risk-item"><div class="risk-dot warn"></div><div><div class="risk-text">Smart contract risk on ${v.project||v.protocol||'this protocol'}</div><div class="risk-sub">Verify audit status on protocol website before depositing</div></div></div>
+  <div class="risk-item"><div class="risk-dot warn"></div><div><div class="risk-text">Variable APY — rates change with utilization</div><div class="risk-sub">Current rate: ${apy}% · May be significantly lower at withdrawal</div></div></div>
+  ${parseFloat(apy)>15?`<div class="risk-item"><div class="risk-dot danger"></div><div><div class="risk-text">High APY (${apy}%) signals elevated risk</div><div class="risk-sub">APYs above 15% typically involve LP risk, token inflation, or leverage</div></div></div>`:''}
+</div>
+<div class="action-row">
+  <button class="btn btn-primary" onclick="quickAsk('Simulate depositing 1000 ${token} into ${name}. Walk through: what transactions are required, what token I receive, how yield accrues, and how to withdraw my funds.')">Simulate deposit →</button>
+  <button class="btn" onclick="quickAsk('What are the specific risks of ${name}? What could cause me to lose money in this vault?')">Risk analysis ↗</button>
+</div>`;
+}
+
+// ── SWAP ──────────────────────────────────────────────────
+function renderSwap(){
+  const router=S.chain==='sol'?'Jupiter Aggregator':S.chain==='arb'?'Camelot / 1inch':'1inch / Uniswap V3';
+  const price=S.chain==='sol'?(S.prices.sol||150):(S.prices.eth||2500);
+  const outAmt=(1000/price).toFixed(6);
+  return`
+<div class="card">
+  <div class="card-title">Swap · ${router}</div>
+  <div class="form-group"><div class="form-label">From <span>Balance: 2,500 USDC</span></div><div class="token-row"><span class="token-badge usdc">USDC</span><input class="form-input" style="border:none;background:transparent;padding:0;flex:1;" id="swap-from" value="1000" oninput="const p=${price};document.getElementById('swap-out').textContent='~'+(parseFloat(this.value)/p).toFixed(6)+' ${CHAINS[S.chain].label}'" /><span class="token-usd">≈ $1,000</span></div></div>
+  <div style="text-align:center;margin:8px 0;color:var(--text3);font-size:16px;cursor:pointer;" onclick="quickAsk('Compare swapping USDC to ${CHAINS[S.chain].label} vs keeping USDC in a lending vault right now')">⇅</div>
+  <div class="form-group"><div class="form-label">To (estimated)</div><div class="token-row"><span class="token-badge ${S.chain}">${CHAINS[S.chain].label}</span><span id="swap-out" style="flex:1;font-family:var(--mono);font-size:13px;">~${outAmt} ${CHAINS[S.chain].label}</span></div></div>
+</div>
+<div class="card">
+  <div class="card-title">Route & pricing <span class="badge live">live prices</span></div>
+  <div class="data-row"><span class="dr-key">Router</span><span class="dr-val green">${router}</span></div>
+  <div class="data-row"><span class="dr-key">${CHAINS[S.chain].label} price</span><span class="dr-val">$${price.toLocaleString()}</span></div>
+  <div class="data-row"><span class="dr-key">Est. price impact</span><span class="dr-val amber">~0.8%</span></div>
+  <div class="data-row"><span class="dr-key">Slippage tolerance</span><span class="dr-val">0.5%</span></div>
+  <div class="data-row"><span class="dr-key">Network fee</span><span class="dr-val">${S.gasData?`~$${S.gasData.usd[1]}`:'—'}</span></div>
+</div>
+<div class="explain-block info">${router} splits your order across multiple liquidity pools to minimize price impact. For amounts over $10k, consider splitting into multiple smaller swaps.</div>
+<div class="action-row">
+  <button class="btn btn-primary" onclick="quickAsk('Simulate swapping 1000 USDC to ${CHAINS[S.chain].label} on ${router}. Walk through execution steps, where slippage occurs, and what could go wrong.')">Simulate swap →</button>
+  <button class="btn" onclick="quickAsk('How can a sandwich attack affect my USDC to ${CHAINS[S.chain].label} swap, and how do I protect myself?')">MEV risks ↗</button>
+</div>`;
+}
+
+// ── LEND ──────────────────────────────────────────────────
+function renderLend(){
+  const protos=S.chain==='sol'
+    ?[{n:'Kamino',s:'11.2%',b:'12.5%'},{n:'MarginFi',s:'9.8%',b:'10.9%'},{n:'Solend',s:'8.3%',b:'9.1%'}]
+    :[{n:'Aave V3',s:'8.4%',b:'9.2%'},{n:'Compound V3',s:'7.1%',b:'8.3%'},{n:'Morpho',s:'9.1%',b:'10.0%'}];
+  return`
+<div class="card">
+  <div class="card-title">Money markets on ${CHAINS[S.chain].name}</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+    ${protos.map(p=>`<div class="action-card"><div class="ac-name">${p.n}</div><div style="display:flex;gap:12px;margin-top:8px;"><div><div style="font-size:9px;color:var(--text3);font-family:var(--sans);">SUPPLY</div><div style="font-size:14px;color:var(--green);font-family:var(--mono);">${p.s}</div></div><div><div style="font-size:9px;color:var(--text3);font-family:var(--sans);">BORROW</div><div style="font-size:14px;color:var(--amber);font-family:var(--mono);">${p.b}</div></div></div></div>`).join('')}
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">Supply USDC to ${protos[0].n}</div>
+  <div class="form-group"><div class="form-label">Amount <span>Balance: 2,500 USDC</span></div><div class="token-row"><span class="token-badge usdc">USDC</span><input class="form-input" style="border:none;background:transparent;padding:0;flex:1;" id="lend-amount" value="500" oninput="document.getElementById('lend-yr').textContent='Est. +$'+(this.value*0.084).toFixed(2)+'/yr on $'+this.value" /><span class="token-usd">≈ $500</span></div></div>
+  <div class="apy-display"><span class="apy-num">${protos[0].s}</span><span class="apy-label">Supply APY</span><span class="apy-period" id="lend-yr">Est. +$42.00/yr on $500</span></div>
+</div>
+<div class="explain-block info">Supplying earns variable interest from borrowers. You receive a receipt token (aUSDC / kUSDC) that auto-accrues yield. You can withdraw anytime if liquidity is available.</div>
+<div class="explain-block warn"><strong>Borrowing risk:</strong> If collateral drops below the liquidation threshold, your position is liquidated with a penalty. Always maintain a health factor above 1.5×.</div>
+<div class="action-row">
+  <button class="btn btn-primary" onclick="quickAsk('Simulate supplying 500 USDC to ${protos[0].n} on ${CHAINS[S.chain].name}. What transactions are needed, what token do I receive, how does yield accrue, and how do I withdraw?')">Simulate supply →</button>
+  <button class="btn" onclick="quickAsk('Explain the health factor on ${protos[0].n} and how to avoid getting liquidated if I borrow against my supply')">Health factor ↗</button>
+</div>`;
+}
+
+// ── PORTFOLIO ─────────────────────────────────────────────
+function renderPortfolio(){
+  const pd=S.portfolioData;
+  return`
+<div class="portfolio-grid">
+  <div class="port-stat"><div class="port-label">Wallet</div><div class="port-val" style="font-size:10px;">${S.wallet.slice(0,16)}…</div></div>
+  <div class="port-stat"><div class="port-label">Network</div><div class="port-val" style="font-size:12px;">${CHAINS[S.chain].name}</div></div>
+  <div class="port-stat"><div class="port-label">RPC</div><div class="port-val" style="font-size:11px;">${S.chain==='sol'?(S.keys.helius?'Helius':'Public'):(S.keys.alchemy?'Alchemy':'Public')}</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Native balance ${pd?'<span class="badge live">live</span>':'<span class="badge demo">loading…</span>'}</div>
+  ${!pd?`<div class="loading"><div class="spinner"></div>Fetching balance…</div>`:''}
+  ${pd?.type==='evm'?`<div class="data-row"><span class="dr-key">ETH</span><span class="dr-val green">${pd.ethBal} ETH${S.prices.eth?` <span style="color:var(--text3);font-size:10px;">$${(parseFloat(pd.ethBal)*(S.prices.eth)).toFixed(2)}</span>`:''}</span></div>`:''}
+  ${pd?.type==='sol'?`<div class="data-row"><span class="dr-key">SOL</span><span class="dr-val green">${pd.solBal.toFixed(6)} SOL${S.prices.sol?` <span style="color:var(--text3);font-size:10px;">$${(pd.solBal*S.prices.sol).toFixed(2)}</span>`:''}</span></div>${(pd.tokens||[]).map(t=>`<div class="data-row"><span class="dr-key">${t.mint}</span><span class="dr-val">${t.amount}</span></div>`).join('')}`:''}
+</div>
+<div class="card">
+  <div class="card-title">Live prices <span class="badge live">CoinGecko</span></div>
+  <div class="data-row"><span class="dr-key">ETH</span><span class="dr-val">$${S.prices.eth?S.prices.eth.toLocaleString():'—'}</span></div>
+  <div class="data-row"><span class="dr-key">SOL</span><span class="dr-val">$${S.prices.sol?S.prices.sol.toFixed(2):'—'}</span></div>
+  <div class="data-row"><span class="dr-key">BTC</span><span class="dr-val">$${S.prices.btc?S.prices.btc.toLocaleString():'—'}</span></div>
+</div>
+<button class="btn" style="width:100%;" onclick="S.portfolioData=null;renderPage();fetchPortfolio()">Refresh →</button>`;
+}
+
+// ── AI ────────────────────────────────────────────────────
+function renderAIShell(){
+  return`
+<div class="ai-panel">
+  <div class="ai-messages" id="ai-messages"></div>
+  <div style="display:flex;flex-wrap:wrap;gap:5px;padding:8px 0;">
+    ${['What is a sandwich attack?','How do I avoid liquidation?','Explain unlimited approvals','Compare Lido vs Rocket Pool','What is impermanent loss?','How does staking work on Solana?'].map(q=>`<button class="btn btn-sm" onclick="quickAsk('${q}')">${q}</button>`).join('')}
+  </div>
+  <div class="ai-input-row">
+    <input class="ai-input" id="ai-input" placeholder="Ask about transactions, protocols, risks, DeFi concepts…" onkeydown="if(event.key==='Enter')sendAI()" />
+    <button class="btn btn-primary" onclick="sendAI()">Ask →</button>
+  </div>
+</div>`;
+}
+function restoreAIMessages(){
+  const c=document.getElementById('ai-messages');if(!c)return;
+  c.innerHTML=`<div class="ai-msg"><div class="ai-msg-role">chaperone</div><div class="ai-msg-body">I'm your DeFi advisor with live context on <strong>${CHAINS[S.chain].name}</strong>. ETH: <strong>$${S.prices.eth?S.prices.eth.toLocaleString():'—'}</strong> · SOL: <strong>$${S.prices.sol?S.prices.sol.toFixed(2):'—'}</strong>. Ask me anything about transactions, protocols, staking, or risks.</div></div>`
+    +S.aiMessages.map(m=>`<div class="ai-msg"><div class="ai-msg-role">${m.role==='user'?'you':'chaperone'}</div><div class="ai-msg-body ${m.role==='user'?'user':''}">${m.content}</div></div>`).join('');
+  c.scrollTop=c.scrollHeight;
+}
+async function sendAI(){
+  const inp=document.getElementById('ai-input');
+  if(!inp||!inp.value.trim()||S.aiLoading)return;
+  const msg=inp.value.trim();inp.value='';
+  S.aiMessages.push({role:'user',content:msg});
+  appendAIMsg('you',msg,true);
+  S.aiLoading=true;
+  appendAIMsg('chaperone','<span class="spinner" style="display:inline-block;width:10px;height:10px;"></span>',false,'ai-thinking');
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',max_tokens:1000,
+      system:`You are Crypto Chaperone, expert DeFi safety advisor. Context: chain=${CHAINS[S.chain].name}, wallet=${S.wallet}, ETH=$${S.prices.eth}, SOL=$${S.prices.sol}. Be concise, honest about risks. Never make financial recommendations. Use <strong> for emphasis. Under 250 words.`,
+      messages:S.aiMessages
+    })});
+    const d=await r.json();
+    const reply=d.content?.[0]?.text||'Error generating response.';
+    S.aiMessages.push({role:'assistant',content:reply});
+    document.getElementById('ai-thinking')?.remove();
+    appendAIMsg('chaperone',reply,false);
+  }catch(e){
+    document.getElementById('ai-thinking')?.remove();
+    appendAIMsg('chaperone','Connection error. Check your network.',false);
+  }
+  S.aiLoading=false;
+}
+function appendAIMsg(role,content,isUser,id){
+  const c=document.getElementById('ai-messages');if(!c)return;
+  const d=document.createElement('div');d.className='ai-msg';if(id)d.id=id;
+  d.innerHTML=`<div class="ai-msg-role">${role}</div><div class="ai-msg-body ${isUser?'user':''}">${content}</div>`;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+
+// ── SETTINGS ──────────────────────────────────────────────
+function renderSettings(){
+  const ks=(k)=>S.keys[k]?`<span class="api-status-ok">✓ set</span>`:`<span class="api-status-none">not set</span>`;
+  return`
+<div class="card">
+  <div class="card-title">API keys <span style="color:var(--text3);font-size:9px;font-family:var(--sans);">stored locally in browser only</span></div>
+  <div class="api-row"><span class="api-label">Alchemy (EVM)</span><input class="api-input" id="key-alchemy" placeholder="your-alchemy-v2-key" value="${S.keys.alchemy}" type="password" />${ks('alchemy')}</div>
+  <div class="api-row"><span class="api-label">Helius (Solana)</span><input class="api-input" id="key-helius" placeholder="your-helius-key" value="${S.keys.helius}" type="password" />${ks('helius')}</div>
+  <div class="api-row"><span class="api-label">Etherscan</span><input class="api-input" id="key-etherscan" placeholder="your-etherscan-key" value="${S.keys.etherscan}" type="password" />${ks('etherscan')}</div>
+  <button class="btn btn-primary" style="margin-top:12px;" onclick="saveKeys()">Save keys →</button>
+</div>
+<div class="card">
+  <div class="card-title">What each key unlocks</div>
+  <div class="data-row"><span class="dr-key">Alchemy</span><span class="dr-val" style="font-family:var(--sans);font-size:11px;text-align:right;">Live EVM tx decoding, gas data, contract calls (ETH + ARB)</span></div>
+  <div class="data-row"><span class="dr-key">Helius</span><span class="dr-val" style="font-family:var(--sans);font-size:11px;text-align:right;">Enhanced Solana tx parsing, token metadata</span></div>
+  <div class="data-row"><span class="dr-key">Etherscan</span><span class="dr-val" style="font-family:var(--sans);font-size:11px;text-align:right;">Contract verification, ABI decoding, approval history</span></div>
+  <div class="data-row"><span class="dr-key">CoinGecko</span><span class="dr-val green" style="font-family:var(--sans);font-size:11px;text-align:right;">Always live — no key needed ✓</span></div>
+  <div class="data-row"><span class="dr-key">DeFiLlama</span><span class="dr-val green" style="font-family:var(--sans);font-size:11px;text-align:right;">Always live — no key needed ✓</span></div>
+</div>
+<div class="explain-block info">Keys are stored only in your browser's localStorage. They never leave your device. Free tiers are sufficient: Alchemy free = 300M CU/mo, Helius free = 50k req/day, Etherscan free = 5 req/sec.</div>
+<div class="card">
+  <div class="card-title">Get free API keys</div>
+  <div class="data-row"><span class="dr-key">Alchemy</span><span class="dr-val"><a href="https://alchemy.com" target="_blank" style="color:var(--blue);">alchemy.com →</a></span></div>
+  <div class="data-row"><span class="dr-key">Helius</span><span class="dr-val"><a href="https://helius.xyz" target="_blank" style="color:var(--blue);">helius.xyz →</a></span></div>
+  <div class="data-row"><span class="dr-key">Etherscan</span><span class="dr-val"><a href="https://etherscan.io/apis" target="_blank" style="color:var(--blue);">etherscan.io/apis →</a></span></div>
+</div>`;
+}
+function saveKeys(){
+  ['alchemy','helius','etherscan'].forEach(k=>{
+    const v=document.getElementById(`key-${k}`)?.value?.trim()||'';
+    S.keys[k]=v;
+    if(v)localStorage.setItem(`cc_${k}`,v);else localStorage.removeItem(`cc_${k}`);
+  });
+  renderPage();
+}
+
+// ═══════════════════════ HELPERS ══════════════════════════
+function updateStakeCalc(price,sel){
+  const amt=parseFloat(document.getElementById('stake-amount')?.value||1);
+  const el1=document.getElementById('stake-usd');if(el1)el1.textContent=`≈ $${(amt*price).toFixed(2)}`;
+  const el2=document.getElementById('stake-yr');if(el2)el2.textContent=`Est. +$${(amt*price*parseFloat(sel.apy)/100).toFixed(2)}/yr on ${amt} ${CHAINS[S.chain].label}`;
+  const el3=document.getElementById('stake-recv-amt');if(el3)el3.textContent=`~${(amt*0.997).toFixed(4)} ${sel.receive}`;
+}
+
+const DEMO_TX={
+  eth:{hash:'0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060',fn:'transfer(address,uint256)',sel:'0xa9059cbb',contract:'0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',contractName:'USD Coin (USDC)',verified:true,from:'0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',value:'0',valueUsd:'',gasUsed:'65,012',gasPrice:'27.4 gwei',gasCostEth:'0.001782',gasCostUsd:'4.45',status:'success',blockNumber:'12,965,000',inputData:'0xa9059cbb000000000000000000000000d3cda9…',risks:[{level:'ok',label:'USDC contract verified on Etherscan',sub:'Circle official token — source code publicly readable'},{level:'ok',label:'Standard ERC-20 transfer — no approvals granted',sub:'No spending permissions created'},{level:'warn',label:'Recipient address has low on-chain history (3 txs)',sub:'Verify destination before signing'},{level:'ok',label:'No MEV sandwich-attack vector',sub:'Transfer functions are not price-sensitive'}],sim:{ethDelta:'−0.001782 ETH (gas)',out:'−2,500 USDC',recipientDelta:'+2,500 USDC',newApprovals:'none'}},
+  sol:{hash:'5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF72ei97JbgAtszT6W3h',fn:'transfer (native SOL)',contract:'11111111111111111111111111111111',contractName:'System Program',verified:true,from:'GThUX1Atko4tqhN2NaiTazWSeFWMuiUvfFnyJyUghFMJ',slot:'294,108,477',feeSol:'0.000005',feeUsd:'0.00075',status:'success',risks:[{level:'ok',label:'System Program — canonical Solana runtime',sub:'No third-party contract involved'},{level:'ok',label:'Recipient account is active (88 txs)',sub:'Normal wallet activity detected'},{level:'warn',label:'Confirm recipient is not a program-owned account',sub:'Some PDAs auto-close at zero balance'},{level:'ok',label:'Per-transaction authorization — no persistent approvals',sub:'Lower residual risk than EVM model'}],sim:{ethDelta:'−0.000005 SOL (fee)',out:'−12.5 SOL',recipientDelta:'+12.5 SOL',newApprovals:'N/A (per-tx auth)'},balanceChanges:[{addr:'GThUX1Atko4tqhN2NaiTazWSeFWMuiUvfFnyJyUghFMJ',delta:-12.5},{addr:'d3cda913deb6f09…',delta:12.5}]},
+  arb:{hash:'0xa2e9ef7b49e6d1f8ff5d8a7db55e5c0',fn:'swapExactTokensForTokens(…)',sel:'0x38ed1739',contract:'0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506',contractName:'SushiSwap Router V2',verified:true,from:'0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',value:'0',gasUsed:'142,800',gasPrice:'0.12 gwei',gasCostEth:'0.000017',gasCostUsd:'0.04',status:'success',blockNumber:'189,234,900',inputData:'0x38ed17390000000000000000000000000000000000…',risks:[{level:'ok',label:'SushiSwap V2 verified and audited',sub:'Established protocol, $800M+ TVL'},{level:'warn',label:'Slippage tolerance at 2% — elevated',sub:'Could result in losses during volatile periods'},{level:'danger',label:'Price impact 1.8% — above 1% threshold',sub:'Order large relative to pool. Consider splitting.'},{level:'warn',label:'MEV exposure on public mempool',sub:'Use Flashbots Protect for large swaps on mainnet'}],sim:{ethDelta:'−0.000017 ETH (gas on Arbitrum)',out:'−1,000 USDC',recipientDelta:'+0.641 WETH',newApprovals:'SushiSwap Router approved for USDC'}},
+};
+
+async function runInspect(){
+  const hash=document.getElementById('tx-hash')?.value?.trim();if(!hash)return;
+  S.txLoaded=false;S.txData=null;renderPage();
+  try{
+    S.txData=S.chain==='sol'?await fetchSolanaTx(hash):await fetchEvmTx(hash);
+    if(S.txData){S.txLoaded=true;S.inspectTab='overview';await fetchGasData();}
+    renderPage();
+  }catch(e){console.error(e);renderPage();}
+}
+function loadDemoTx(){
+  const inp=document.getElementById('tx-hash');if(inp) inp.value=DEMO_TX[S.chain].hash;
+  S.txData=DEMO_TX[S.chain];S.txLoaded=true;S.inspectTab='overview';
+  fetchGasData().then(renderPage);
+}
+function quickAsk(q){
+  showPage('ai',document.getElementById('nav-ai'));
+  setTimeout(()=>{const i=document.getElementById('ai-input');if(i){i.value=q;sendAI();}},80);
+}
+function askAIAboutTx(){
+  const tx=S.txData;
+  quickAsk(`Analyze this ${S.chain.toUpperCase()} transaction: function="${tx.fn}", contract="${tx.contractName||tx.contract}", verified=${tx.verified}, status=${tx.status}. Give me a thorough explanation and all risks I should know before signing.`);
+}
+
+// ═══════════════════════ BOOT ═════════════════════════════
+async function init(){
+  renderPage();
+  await fetchPrices();
+  fetchBlockNum();
+  fetchGasData();
+  setInterval(fetchPrices,60000);
+  setInterval(fetchBlockNum,12000);
+}
+init();
+</script>
+</body>
+</html>
