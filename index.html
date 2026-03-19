@@ -847,8 +847,10 @@ ${S.stakeTab==='unstake'?`
 ${S.stakeTab==='positions'?`
 <div class="card">
   <div class="card-title">Active positions</div>
-  <div class="data-row"><span class="dr-key">Lido stETH</span><span class="dr-val green">0.997 stETH · $${(0.997*(S.prices.eth||2500)).toFixed(0)} · 4.1%</span></div>
-  <div class="data-row"><span class="dr-key">Jito jitoSOL</span><span class="dr-val green">45.2 jitoSOL · $${(45.2*(S.prices.sol||150)).toFixed(0)} · 8.1%</span></div>
+  ${S.chain==='sol'?`<div class="data-row"><span class="dr-key">Jito jitoSOL</span><span class="dr-val green">45.2 jitoSOL · $${(45.2*(S.prices.sol||150)).toFixed(0)} · 8.1%</span></div>`:''}
+  ${S.chain==='eth'?`<div class="data-row"><span class="dr-key">Lido stETH</span><span class="dr-val green">0.997 stETH · $${(0.997*(S.prices.eth||2500)).toFixed(0)} · 4.1%</span></div>`:''}
+  ${S.chain==='arb'||S.chain==='base'?`<div class="data-row" style="color:var(--text3);font-family:var(--sans);font-size:11px;padding:12px 0;">No staking positions found on ${CHAINS[S.chain].name}.</div>`:''}
+
 </div>`:''}`;
 }
 
