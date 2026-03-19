@@ -265,7 +265,8 @@ const S = {
   keys:{
     alchemy: localStorage.getItem('cc_alchemy')||'',
     helius:  localStorage.getItem('cc_helius')||'',
-    etherscan: localStorage.getItem('cc_etherscan')||''
+    etherscan: localStorage.getItem('cc_etherscan')||'',
+    anthropic: localStorage.getItem('cc_anthropic')||''
   }
 };
 
@@ -768,7 +769,8 @@ async function generateTxExplanation(){
   const el=document.getElementById('explain-content');if(!el)return;
   const prompt=`Explain this ${S.chain.toUpperCase()} transaction plainly: Function="${tx.fn}", Contract="${tx.contractName||tx.contract}", Verified=${tx.verified}, Value="${tx.value||'0'}", Status="${tx.status}". Key risks: ${tx.risks.map(r=>r.label).join('; ')}. Keep under 220 words. Use plain paragraphs. Use <strong> for key terms and amounts. Flag anything dangerous clearly.`;
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:'You are Crypto Chaperone, a DeFi transaction safety advisor. Explain transactions clearly. Use <strong> tags. Never make financial recommendations.',messages:[{role:'user',content:prompt}]})});
+    if(!S.keys.anthropic){if(el)el.innerHTML=`<div class="error-note">Add your Anthropic API key in <strong>API Keys</strong> settings to enable AI explanations.</div>`;return;}
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.keys.anthropic,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:'You are Crypto Chaperone, a DeFi transaction safety advisor. Explain transactions clearly. Use <strong> tags. Never make financial recommendations.',messages:[{role:'user',content:prompt}]})});
     const d=await r.json();
     const text=d.content?.[0]?.text||'Could not generate explanation.';
     if(el) el.innerHTML=`<div class="explain-block info">${text}</div><div class="action-row" style="margin-top:8px;"><button class="btn" onclick="askAIAboutTx()">Ask follow-up ↗</button><button class="btn btn-danger" onclick="showPage('approvals',document.getElementById('nav-approvals'))">Review approvals</button></div>`;
@@ -1024,7 +1026,8 @@ async function sendAI(){
   S.aiLoading=true;
   appendAIMsg('chaperone','<span class="spinner" style="display:inline-block;width:10px;height:10px;"></span>',false,'ai-thinking');
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    if(!S.keys.anthropic){appendAIMsg('chaperone','Add your <strong>Anthropic API key</strong> in the API Keys settings to enable the AI advisor.',false);S.aiLoading=false;document.getElementById('ai-thinking')?.remove();return;}
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':S.keys.anthropic,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({
       model:'claude-sonnet-4-20250514',max_tokens:1000,
       system:`You are Crypto Chaperone, expert DeFi safety advisor. Context: chain=${CHAINS[S.chain].name}, wallet=${S.wallet}, ETH=$${S.prices.eth}, SOL=$${S.prices.sol}. Be concise, honest about risks. Never make financial recommendations. Use <strong> for emphasis. Under 250 words.`,
       messages:S.aiMessages
@@ -1080,6 +1083,7 @@ function renderSettings(){
   return`
 <div class="card">
   <div class="card-title">API keys <span style="color:var(--text3);font-size:9px;font-family:var(--sans);">stored locally in browser only</span></div>
+  <div class="api-row"><span class="api-label">Anthropic</span><input class="api-input" id="key-anthropic" placeholder="sk-ant-…" value="${S.keys.anthropic}" type="password" />${ks('anthropic')}</div>
   <div class="api-row"><span class="api-label">Alchemy (EVM)</span><input class="api-input" id="key-alchemy" placeholder="your-alchemy-v2-key" value="${S.keys.alchemy}" type="password" />${ks('alchemy')}</div>
   <div class="api-row"><span class="api-label">Helius (Solana)</span><input class="api-input" id="key-helius" placeholder="your-helius-key" value="${S.keys.helius}" type="password" />${ks('helius')}</div>
   <div class="api-row"><span class="api-label">Etherscan</span><input class="api-input" id="key-etherscan" placeholder="your-etherscan-key" value="${S.keys.etherscan}" type="password" />${ks('etherscan')}</div>
@@ -1087,6 +1091,7 @@ function renderSettings(){
 </div>
 <div class="card">
   <div class="card-title">What each key unlocks</div>
+  <div class="data-row"><span class="dr-key">Anthropic</span><span class="dr-val" style="font-family:var(--sans);font-size:11px;text-align:right;">AI Advisor chat + TX explanation (required for AI features)</span></div>
   <div class="data-row"><span class="dr-key">Alchemy</span><span class="dr-val" style="font-family:var(--sans);font-size:11px;text-align:right;">Live EVM tx decoding, gas data, contract calls (ETH + ARB)</span></div>
   <div class="data-row"><span class="dr-key">Helius</span><span class="dr-val" style="font-family:var(--sans);font-size:11px;text-align:right;">Enhanced Solana tx parsing, token metadata</span></div>
   <div class="data-row"><span class="dr-key">Etherscan</span><span class="dr-val" style="font-family:var(--sans);font-size:11px;text-align:right;">Contract verification, ABI decoding, approval history</span></div>
@@ -1102,7 +1107,7 @@ function renderSettings(){
 </div>`;
 }
 function saveKeys(){
-  ['alchemy','helius','etherscan'].forEach(k=>{
+  ['anthropic','alchemy','helius','etherscan'].forEach(k=>{
     const v=document.getElementById(`key-${k}`)?.value?.trim()||'';
     S.keys[k]=v;
     if(v)localStorage.setItem(`cc_${k}`,v);else localStorage.removeItem(`cc_${k}`);
