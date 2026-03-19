@@ -17,6 +17,7 @@
   --blue:#4d9fff;--blue-dim:rgba(77,159,255,0.1);
   --sol:#9945ff;--sol-dim:rgba(153,69,255,0.12);
   --eth:#627eea;--eth-dim:rgba(98,126,234,0.12);
+  --base:#0052ff;--base-dim:rgba(0,82,255,0.1);
   --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -34,6 +35,7 @@ html,body{background:var(--bg);color:var(--text);font-family:var(--mono);min-hei
 .chain-btn.active.eth{border-color:var(--eth);color:var(--eth);background:var(--eth-dim);}
 .chain-btn.active.sol{border-color:var(--sol);color:var(--sol);background:var(--sol-dim);}
 .chain-btn.active.arb{border-color:#12aaff;color:#12aaff;background:rgba(18,170,255,0.1);}
+.chain-btn.active.base{border-color:var(--base);color:var(--base);background:var(--base-dim);}
 .chain-btn:hover:not(.active){background:var(--surface2);}
 .nav{flex:1;padding:8px 0;overflow-y:auto;}
 .nav-section{padding:10px 12px 4px;font-size:9px;letter-spacing:0.15em;color:var(--text3);text-transform:uppercase;font-family:var(--sans);}
@@ -128,6 +130,7 @@ html,body{background:var(--bg);color:var(--text);font-family:var(--mono);min-hei
 .token-badge{font-size:10px;padding:2px 8px;border-radius:99px;font-family:var(--mono);white-space:nowrap;}
 .token-badge.sol{background:var(--sol-dim);color:var(--sol);border:1px solid rgba(153,69,255,0.3);}
 .token-badge.eth{background:var(--eth-dim);color:var(--eth);border:1px solid rgba(98,126,234,0.3);}
+.token-badge.base{background:var(--base-dim);color:var(--base);border:1px solid rgba(0,82,255,0.3);}
 .token-badge.usdc{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(77,159,255,0.3);}
 .token-badge.green{background:var(--green-dim);color:var(--green);border:1px solid var(--green-border);}
 .apy-display{display:flex;align-items:baseline;gap:6px;padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:12px;}
@@ -210,6 +213,7 @@ html,body{background:var(--bg);color:var(--text);font-family:var(--mono);min-hei
       <button class="chain-btn active eth" id="btn-eth" onclick="switchChain('eth')">ETH</button>
       <button class="chain-btn sol" id="btn-sol" onclick="switchChain('sol')">SOL</button>
       <button class="chain-btn arb" id="btn-arb" onclick="switchChain('arb')">ARB</button>
+      <button class="chain-btn base" id="btn-base" onclick="switchChain('base')">BASE</button>
     </div>
   </div>
   <nav class="nav">
@@ -267,19 +271,22 @@ const S = {
 
 // ═══════════════════════ CHAIN ════════════════════════════
 const CHAINS = {
-  eth:{name:'Ethereum Mainnet',label:'ETH',explorerTx:'https://etherscan.io/tx/',explorerAddr:'https://etherscan.io/address/'},
-  sol:{name:'Solana Mainnet',label:'SOL',explorerTx:'https://solscan.io/tx/',explorerAddr:'https://solscan.io/account/'},
-  arb:{name:'Arbitrum One',label:'ARB',explorerTx:'https://arbiscan.io/tx/',explorerAddr:'https://arbiscan.io/address/'},
+  eth: {name:'Ethereum Mainnet',label:'ETH',explorerTx:'https://etherscan.io/tx/',explorerAddr:'https://etherscan.io/address/'},
+  sol: {name:'Solana Mainnet',label:'SOL',explorerTx:'https://solscan.io/tx/',explorerAddr:'https://solscan.io/account/'},
+  arb: {name:'Arbitrum One',label:'ARB',explorerTx:'https://arbiscan.io/tx/',explorerAddr:'https://arbiscan.io/address/'},
+  base:{name:'Base',label:'ETH',explorerTx:'https://basescan.org/tx/',explorerAddr:'https://basescan.org/address/'},
 };
 
 // ═══════════════════════ RPC HELPERS ═════════════════════
 function getEvmRpc(chain){
   const k=S.keys.alchemy;
   if(k){
-    if(chain==='eth') return `https://eth-mainnet.g.alchemy.com/v2/${k}`;
-    if(chain==='arb') return `https://arb-mainnet.g.alchemy.com/v2/${k}`;
+    if(chain==='eth')  return `https://eth-mainnet.g.alchemy.com/v2/${k}`;
+    if(chain==='arb')  return `https://arb-mainnet.g.alchemy.com/v2/${k}`;
+    if(chain==='base') return `https://base-mainnet.g.alchemy.com/v2/${k}`;
   }
-  if(chain==='arb') return 'https://arb1.arbitrum.io/rpc';
+  if(chain==='arb')  return 'https://arb1.arbitrum.io/rpc';
+  if(chain==='base') return 'https://mainnet.base.org';
   return 'https://eth.llamarpc.com';
 }
 function getSolRpc(){
@@ -304,7 +311,7 @@ async function solRpc(method,params){
 }
 async function etherscanGet(params){
   const key=S.keys.etherscan||'YourApiKeyToken';
-  const base=S.chain==='arb'?'https://api.arbiscan.io/api':'https://api.etherscan.io/api';
+  const base={eth:'https://api.etherscan.io/api',arb:'https://api.arbiscan.io/api',base:'https://api.basescan.org/api'}[S.chain]||'https://api.etherscan.io/api';
   const qs=Object.entries({...params,apikey:key}).map(([k,v])=>`${k}=${v}`).join('&');
   try{const r=await fetch(`${base}?${qs}`);return await r.json();}catch(e){return null;}
 }
@@ -436,25 +443,29 @@ async function fetchNFTs(){
           params:{ownerAddress:S.wallet,page:1,limit:24,displayOptions:{showFungible:false}}})
       });
       const d=await r.json();
-      const nfts=(d.result?.items||[]).map(n=>({
-        name:n.content?.metadata?.name||n.id.slice(0,8)+'…',
-        image:n.content?.files?.[0]?.uri||n.content?.links?.image||null,
-        collection:n.grouping?.[0]?.group_value?.slice(0,20)||'—',id:n.id
-      }));
+      const solSpam=/^(https?:|Visit|Claim|www\.|Free |You have)/i;
+      const nfts=(d.result?.items||[])
+        .filter(n=>!n.burnt&&n.content?.metadata?.name&&!solSpam.test(n.content.metadata.name))
+        .map(n=>({
+          name:n.content.metadata.name,
+          image:n.content?.files?.[0]?.uri||n.content?.links?.image||null,
+          collection:n.grouping?.[0]?.group_value?.slice(0,20)||'—',id:n.id
+        }));
       S.nftData={type:'sol',nfts};
     } else {
       if(!S.keys.alchemy){S.nftData={nfts:[],error:'Alchemy API key required for NFTs — add it in API Keys'};renderPage();return;}
-      const base=S.chain==='arb'
-        ?`https://arb-mainnet.g.alchemy.com/nft/v3/${S.keys.alchemy}`
-        :`https://eth-mainnet.g.alchemy.com/nft/v3/${S.keys.alchemy}`;
-      const r=await fetch(`${base}/getNFTsForOwner?owner=${S.wallet}&pageSize=24`);
+      const nftBase={eth:`https://eth-mainnet.g.alchemy.com/nft/v3/${S.keys.alchemy}`,arb:`https://arb-mainnet.g.alchemy.com/nft/v3/${S.keys.alchemy}`,base:`https://base-mainnet.g.alchemy.com/nft/v3/${S.keys.alchemy}`};
+      const r=await fetch(`${nftBase[S.chain]||nftBase.eth}/getNFTsForOwner?owner=${S.wallet}&pageSize=50&excludeFilters[]=SPAM&excludeFilters[]=AIRDROPS`);
       const d=await r.json();
-      const nfts=(d.ownedNfts||[]).map(n=>({
-        name:n.name||n.contract?.name||'NFT #'+n.tokenId,
-        image:n.image?.thumbnailUrl||n.image?.cachedUrl||null,
-        collection:n.contract?.name||'—',
-        tokenId:n.tokenId,contract:n.contract?.address
-      }));
+      const spamName=/^(https?:|Visit|Claim|www\.|Free |You have|Congratulations)/i;
+      const nfts=(d.ownedNfts||[])
+        .filter(n=>!n.spamInfo?.isSpam&&n.contract?.name&&!spamName.test(n.name||''))
+        .map(n=>({
+          name:n.name||n.contract?.name||'NFT #'+n.tokenId,
+          image:n.image?.thumbnailUrl||n.image?.cachedUrl||null,
+          collection:n.contract?.name||'—',
+          tokenId:n.tokenId,contract:n.contract?.address
+        }));
       S.nftData={type:'evm',nfts};
     }
   }catch(e){S.nftData={nfts:[],error:'Error loading NFTs: '+e.message};}
@@ -601,7 +612,7 @@ async function fetchApprovals(){
 // ═══════════════════════ NAV ══════════════════════════════
 function switchChain(c){
   S.chain=c;S.txLoaded=false;S.txData=null;S.gasData=null;
-  document.querySelectorAll('.chain-btn').forEach(b=>b.classList.remove('active','eth','sol','arb'));
+  document.querySelectorAll('.chain-btn').forEach(b=>b.classList.remove('active','eth','sol','arb','base'));
   document.getElementById('btn-'+c)?.classList.add('active',c);
   document.getElementById('chain-label').textContent=CHAINS[c].name;
   document.getElementById('block-num').textContent='—';
@@ -789,7 +800,8 @@ ${unlimited.length>0?`<div class="explain-block danger"><strong>${unlimited.leng
 const STAKE_PROTOS={
   eth:[{name:'Lido',apy:'4.1',receive:'stETH',tvl:'$18.2B'},{name:'Rocket Pool',apy:'3.9',receive:'rETH',tvl:'$4.1B'},{name:'Frax Ether',apy:'4.3',receive:'sfrxETH',tvl:'$780M'}],
   sol:[{name:'Jito',apy:'8.1',receive:'jitoSOL',tvl:'$3.8B'},{name:'Marinade',apy:'7.9',receive:'mSOL',tvl:'$1.2B'},{name:'BlazeStake',apy:'7.7',receive:'bSOL',tvl:'$320M'}],
-  arb:[{name:'Lido (bridged)',apy:'4.0',receive:'wstETH',tvl:'$1.1B'},{name:'Aave V3 WETH',apy:'2.8',receive:'aWETH',tvl:'$890M'}],
+  arb: [{name:'Lido (bridged)',apy:'4.0',receive:'wstETH',tvl:'$1.1B'},{name:'Aave V3 WETH',apy:'2.8',receive:'aWETH',tvl:'$890M'}],
+  base:[{name:'Moonwell WETH',apy:'3.2',receive:'mWETH',tvl:'$420M'},{name:'Aave V3 Base',apy:'2.9',receive:'aBasWETH',tvl:'$380M'}],
 };
 function renderStake(){
   const protos=STAKE_PROTOS[S.chain]||STAKE_PROTOS.eth;
@@ -905,7 +917,7 @@ function renderVaultDetail(v){
 
 // ── SWAP ──────────────────────────────────────────────────
 function renderSwap(){
-  const router=S.chain==='sol'?'Jupiter Aggregator':S.chain==='arb'?'Camelot / 1inch':'1inch / Uniswap V3';
+  const router=S.chain==='sol'?'Jupiter Aggregator':S.chain==='arb'?'Camelot / 1inch':S.chain==='base'?'Aerodrome / Uniswap V3':'1inch / Uniswap V3';
   const price=S.chain==='sol'?(S.prices.sol||150):(S.prices.eth||2500);
   const outAmt=(1000/price).toFixed(6);
   return`
@@ -934,6 +946,8 @@ function renderSwap(){
 function renderLend(){
   const protos=S.chain==='sol'
     ?[{n:'Kamino',s:'11.2%',b:'12.5%'},{n:'MarginFi',s:'9.8%',b:'10.9%'},{n:'Solend',s:'8.3%',b:'9.1%'}]
+    :S.chain==='base'
+    ?[{n:'Moonwell',s:'4.8%',b:'5.9%'},{n:'Aave V3 Base',s:'4.2%',b:'5.1%'},{n:'Compound V3',s:'3.9%',b:'4.8%'}]
     :[{n:'Aave V3',s:'8.4%',b:'9.2%'},{n:'Compound V3',s:'7.1%',b:'8.3%'},{n:'Morpho',s:'9.1%',b:'10.0%'}];
   return`
 <div class="card">
